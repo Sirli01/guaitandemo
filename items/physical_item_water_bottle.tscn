@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://hxhq13vvsieq"]
+
+[ext_resource type="Script" uid="uid://b8wmkhl55atii" path="res://items/PhysicalItem.gd" id="1_r8fq6"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_yj6st"]
+size = Vector2(24, 59)
+
+[node name="PhysicalItem_WaterBottle" type="Area2D" unique_id=549234068]
+script = ExtResource("1_r8fq6")
+item_id = "water_bottle"
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1314302422]
+offset_right = 24.0
+offset_bottom = 59.0
+color = Color(0, 0.72156864, 1, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1350364046]
+position = Vector2(12, 29.5)
+shape = SubResource("RectangleShape2D_yj6st")
