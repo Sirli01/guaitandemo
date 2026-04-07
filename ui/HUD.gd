@@ -181,11 +181,14 @@ func _build_ui() -> void:
 	add_child(_reading_panel)
 	_reading_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_reading_panel.color = Color(0.05, 0.05, 0.05, 0.95)
+	# ★ 关键：暂停时依然响应关闭按钮点击
+	_reading_panel.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	var reading_vbox := VBoxContainer.new()
 	reading_vbox.name = "ReadingVBox"
 	_reading_panel.add_child(reading_vbox)
 	reading_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	reading_vbox.process_mode = Node.PROCESS_MODE_ALWAYS
 
 	_reading_title = Label.new()
 	_reading_title.name = "ReadingTitle"
@@ -206,6 +209,7 @@ func _build_ui() -> void:
 	_reading_close_btn.name = "ReadingCloseBtn"
 	_reading_close_btn.text = "[ 关闭 ]"
 	_reading_close_btn.pressed.connect(_on_reading_close)
+	_reading_close_btn.process_mode = Node.PROCESS_MODE_ALWAYS
 	reading_vbox.add_child(_reading_close_btn)
 
 func _connect_signals() -> void:

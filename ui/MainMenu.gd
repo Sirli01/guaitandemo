@@ -24,6 +24,8 @@ func _build_ui() -> void:
 	vbox.custom_minimum_size = Vector2(400, 300)
 	add_child(vbox)
 	vbox.set_anchors_preset(Control.PRESET_CENTER)
+	# ★ 锚点计算兜底：确保容器绝对居中
+	vbox.position = (get_viewport_rect().size - vbox.custom_minimum_size) / 2.0
 
 	# 顶部留白
 	var spacer_top := Control.new()
@@ -71,7 +73,7 @@ func _build_ui() -> void:
 
 func _on_start_pressed() -> void:
 	print("[MainMenu] 开始游戏...")
-	get_tree().change_scene_to_file("res://levels/IntroScene.tscn")
+	get_tree().change_scene_to_file("res://levels/RoomScene.tscn")
 
 func _on_quit_pressed() -> void:
 	print("[MainMenu] 退出游戏...")

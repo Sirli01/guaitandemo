@@ -8,96 +8,58 @@ const InventoryUIClass = preload("res://ui/InventoryUI.gd")
 
 var _player: Node = null
 var _phone: Node = null
-var _apartment_door: Node = null
+var _door: Node = null
 var _hud: Node = null
 var _inventory_ui: Node = null
-var _phone_read: bool = false
 var _has_read_phone: bool = false
 var _transitioning: bool = false
-var _in_safe_zone: bool = true
-
-# 区域检测
-var _safe_zone_area: Area2D = null
-var _street_area: Area2D = null
 
 func _ready() -> void:
-	_build_room_geometry()
+	_build_geometry()
 	_spawn_player()
 	_spawn_hud()
 	_spawn_inventory_ui()
 	_spawn_phone()
-	_spawn_hiding_items()
-	_spawn_apartment_door()
+	_spawn_door()
 	_setup_safe_zone()
-	_setup_street_zone()
 	GameManager.update_objective("查看手机上的微信记录")
-	print("[IntroScene] 序章就绪")
+	print("[RoomScene] 房间场景就绪")
 
 # ============================================================
-# 几何地形
+# 几何地形（封闭小房间）
 # ============================================================
 
-func _build_room_geometry() -> void:
+func _build_geometry() -> void:
 	var wall_color: Color = Color(0.2, 0.18, 0.15, 1.0)
 	var floor_color: Color = Color(0.12, 0.10, 0.09, 1.0)
 
-	# ============================================================
-	# 姐姐的小房间（封闭区域，x: 0-280, y: 0-600）
-	# 仅有右侧中部一个门洞通往街道（y: 250-400）
-	# ============================================================
-
-	# 地板（整个房间地面）
+	# 地板
 	_spawn_floor(Vector2(140, 550), Vector2(280, 100), floor_color)
 
-	# 左墙（全高，y: 0-600）
+	# 左墙（全高）
 	_spawn_wall(Vector2(0, 300), Vector2(20, 600), wall_color)
 
-	# 右墙上半段（y: 0-250，门洞上方）
+	# 右墙上半段（y: 0-250）
 	_spawn_wall(Vector2(280, 125), Vector2(20, 250), wall_color)
 
-	# 右墙下半段（y: 400-600，门洞下方）
+	# 右墙下半段（y: 400-600）
 	_spawn_wall(Vector2(280, 500), Vector2(20, 200), wall_color)
 
-	# 天花板（x: 0-280）
+	# 天花板
 	_spawn_wall(Vector2(140, 0), Vector2(280, 20), wall_color)
 
-	# 地板表面（x: 0-280）
+	# 地板表面
 	_spawn_wall(Vector2(140, 600), Vector2(280, 20), wall_color)
 
 	# 房间内家具
 	_spawn_furniture(Vector2(80, 480), Vector2(100, 50), Color(0.3, 0.25, 0.2, 1.0))   # 床
 	_spawn_furniture(Vector2(130, 160), Vector2(120, 40), Color(0.35, 0.28, 0.22, 1.0)) # 桌子
-	_spawn_window(Vector2(140, 25), Vector2(100, 12))                                   # 窗户
 
-	# ============================================================
-	# 长街道（x: 280-1700，约 1500px，y: 100-500）
-	# 严格限制玩家只能在街道内移动
-	# ============================================================
+	# 门框（右侧，y: 250-400 是门洞）
+	_spawn_wall(Vector2(280, 175), Vector2(20, 100), wall_color)   # 门洞上隔断
+	_spawn_wall(Vector2(280, 450), Vector2(20, 100), wall_color)  # 门洞下隔断
 
-	# 街道地面
-	_spawn_floor(Vector2(990, 450), Vector2(1420, 100), floor_color)
-
-	# 街道左边界（与房间门洞对齐，y: 250-400）
-	_spawn_wall(Vector2(280, 325), Vector2(20, 150), wall_color)
-
-	# 街道顶部边界（y: 100，全程封闭）
-	_spawn_wall(Vector2(990, 100), Vector2(1420, 20), wall_color)
-
-	# 街道底部边界（y: 500，全程封闭）
-	_spawn_wall(Vector2(990, 500), Vector2(1420, 20), wall_color)
-
-	# 街道尽头右侧边界（x: 1700，封闭）
-	_spawn_wall(Vector2(1700, 300), Vector2(20, 400), wall_color)
-
-	# 走廊中间增加几个隔断墙，制造狭长压迫感
-	_spawn_wall(Vector2(600, 100), Vector2(10, 80), wall_color)    # 隔断墙上段
-	_spawn_wall(Vector2(600, 420), Vector2(10, 80), wall_color)   # 隔断墙下段
-	_spawn_wall(Vector2(900, 100), Vector2(10, 80), wall_color)
-	_spawn_wall(Vector2(900, 420), Vector2(10, 80), wall_color)
-	_spawn_wall(Vector2(1200, 100), Vector2(10, 80), wall_color)
-	_spawn_wall(Vector2(1200, 420), Vector2(10, 80), wall_color)
-
-	print("[IntroScene] 几何地形已生成（封闭房间 + 1500px长街）")
+	print("[RoomScene] 几何地形已生成")
 
 func _spawn_wall(pos: Vector2, size: Vector2, color: Color) -> void:
 	var wall := StaticBody2D.new()
@@ -159,26 +121,6 @@ func _spawn_furniture(pos: Vector2, size: Vector2, color: Color) -> void:
 	rect.position = Vector2(-size.x / 2, -size.y / 2)
 	furniture.add_child(rect)
 
-func _spawn_window(pos: Vector2, size: Vector2) -> void:
-	var window := StaticBody2D.new()
-	window.name = "Window"
-	window.global_position = pos
-	window.collision_layer = 1
-	window.collision_mask = 0
-	add_child(window)
-
-	var shape := RectangleShape2D.new()
-	shape.size = size
-	var collision := CollisionShape2D.new()
-	collision.shape = shape
-	window.add_child(collision)
-
-	var rect := ColorRect.new()
-	rect.color = Color(0.15, 0.2, 0.3, 0.8)
-	rect.size = size
-	rect.position = Vector2(-size.x / 2, -size.y / 2)
-	window.add_child(rect)
-
 # ============================================================
 # 玩家生成（带 Camera2D）
 # ============================================================
@@ -186,10 +128,10 @@ func _spawn_window(pos: Vector2, size: Vector2) -> void:
 func _spawn_player() -> void:
 	_player = PlayerClass.new()
 	_player.name = "Player"
-	_player.global_position = Vector2(120, 350)
+	_player.global_position = Vector2(100, 400)
+	_player.is_in_safe_room = true
 	add_child(_player)
 
-	# ★ 关键：给玩家添加 Camera2D 实现镜头跟随
 	var camera := Camera2D.new()
 	camera.name = "Camera2D"
 	camera.position_smoothing_enabled = true
@@ -197,7 +139,7 @@ func _spawn_player() -> void:
 	_player.add_child(camera)
 	camera.make_current()
 
-	print("[IntroScene] 玩家 + Camera2D 已生成")
+	print("[RoomScene] 玩家 + Camera2D 已生成")
 
 # ============================================================
 # HUD 和背包
@@ -205,15 +147,15 @@ func _spawn_player() -> void:
 
 func _spawn_hud() -> void:
 	_hud = HUDClass.new()
-	_hud.name = "IntroHUD"
+	_hud.name = "RoomHUD"
 	add_child(_hud)
-	print("[IntroScene] HUD 已生成")
+	print("[RoomScene] HUD 已生成")
 
 func _spawn_inventory_ui() -> void:
 	_inventory_ui = InventoryUIClass.new()
-	_inventory_ui.name = "IntroInventoryUI"
+	_inventory_ui.name = "RoomInventoryUI"
 	add_child(_inventory_ui)
-	print("[IntroScene] 背包 UI 已生成")
+	print("[RoomScene] 背包 UI 已生成")
 
 # ============================================================
 # 手机道具
@@ -242,143 +184,79 @@ func _spawn_phone() -> void:
 	_phone.add_child(visual)
 
 	_phone.interacted.connect(_on_phone_interacted)
-	print("[IntroScene] 手机已生成")
+	print("[RoomScene] 手机已生成")
 
 # ============================================================
-# 走廊隐藏道具
+# 房间出口门
 # ============================================================
 
-func _spawn_hiding_items() -> void:
-	# 1500px 长街道上的隐藏道具
-	var items: Array = [
-		["water_bottle", Vector2(450, 380), Color(0.3, 0.6, 1.0)],
-		["energy_drink", Vector2(750, 350), Color(0.6, 0.3, 1.0)],
-	]
-	for item_data in items:
-		var item_id: String = item_data[0]
-		var pos: Vector2 = item_data[1]
-		var color: Color = item_data[2]
-		_spawn_physical_item(item_id, pos, color)
-
-func _spawn_physical_item(item_id: String, spawn_pos: Vector2, color: Color) -> void:
-	var entity: Node = PhysicalItemClass.new()
-	entity.name = "PhysItem_%s" % item_id
-	entity.global_position = spawn_pos
-	entity.item_id = item_id
-	entity.collision_layer = 2
-	entity.collision_mask = 0
-	entity.monitorable = true
-	add_child(entity)
-
-	var collision := CollisionShape2D.new()
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(28, 28)
-	collision.shape = shape
-	entity.add_child(collision)
-
-	var visual := ColorRect.new()
-	visual.color = color
-	visual.size = Vector2(24, 24)
-	visual.position = Vector2(-12, -12)
-	entity.add_child(visual)
-
-	print("[IntroScene] 隐藏道具已生成: %s @ %v" % [item_id, spawn_pos])
-
-# ============================================================
-# 公寓大门
-# ============================================================
-
-func _spawn_apartment_door() -> void:
-	_apartment_door = InteractableClass.new()
-	_apartment_door.name = "ApartmentDoor"
-	_apartment_door.global_position = Vector2(1680, 300)
-	_apartment_door.interaction_hint = "前往妹妹的公寓"
-	_apartment_door.collision_layer = 2
-	_apartment_door.collision_mask = 0
-	_apartment_door.monitorable = true
-	add_child(_apartment_door)
+func _spawn_door() -> void:
+	_door = InteractableClass.new()
+	_door.name = "RoomDoor"
+	_door.global_position = Vector2(265, 325)
+	_door.interaction_hint = "打开房门"
+	_door.collision_layer = 2
+	_door.collision_mask = 0
+	_door.monitorable = true
+	add_child(_door)
 
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(15, 80)
 	collision.shape = shape
-	_apartment_door.add_child(collision)
+	_door.add_child(collision)
 
 	var visual := ColorRect.new()
 	visual.color = Color(0.4, 0.3, 0.2, 1.0)
 	visual.size = Vector2(12, 76)
 	visual.position = Vector2(-6, -38)
-	_apartment_door.add_child(visual)
+	_door.add_child(visual)
 
-	_apartment_door.interacted.connect(_on_door_interacted)
-	print("[IntroScene] 公寓大门已生成")
+	_door.interacted.connect(_on_door_interacted)
+	print("[RoomScene] 房门已生成")
 
 # ============================================================
-# 区域检测（安全区 vs 走廊）
+# 安全区
 # ============================================================
 
 func _setup_safe_zone() -> void:
-	_safe_zone_area = Area2D.new()
-	_safe_zone_area.name = "SafeZone"
-	_safe_zone_area.global_position = Vector2(140, 300)
-	_safe_zone_area.collision_layer = 4
-	_safe_zone_area.collision_mask = 0
-	add_child(_safe_zone_area)
+	var safe_zone := Area2D.new()
+	safe_zone.name = "SafeZone"
+	safe_zone.global_position = Vector2(140, 300)
+	safe_zone.collision_layer = 4
+	safe_zone.collision_mask = 0
+	add_child(safe_zone)
 
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(280, 600)
 	var collision := CollisionShape2D.new()
 	collision.shape = shape
-	_safe_zone_area.add_child(collision)
+	safe_zone.add_child(collision)
 
-	_safe_zone_area.body_entered.connect(_on_safe_zone_entered)
-	_safe_zone_area.body_exited.connect(_on_safe_zone_exited)
-	print("[IntroScene] 安全区已设置")
-
-func _setup_street_zone() -> void:
-	_street_area = Area2D.new()
-	_street_area.name = "StreetZone"
-	_street_area.global_position = Vector2(990, 300)
-	_street_area.collision_layer = 4
-	_street_area.collision_mask = 0
-	add_child(_street_area)
-
-	var shape := RectangleShape2D.new()
-	shape.size = Vector2(1420, 400)
-	var collision := CollisionShape2D.new()
-	collision.shape = shape
-	_street_area.add_child(collision)
-
-	_street_area.body_entered.connect(_on_street_entered)
-	print("[IntroScene] 街道区域已设置")
+	safe_zone.body_entered.connect(_on_safe_zone_entered)
+	safe_zone.body_exited.connect(_on_safe_zone_exited)
+	print("[RoomScene] 安全区已设置")
 
 func _on_safe_zone_entered(body: Node) -> void:
 	if body == _player:
-		_in_safe_zone = true
 		_player.is_in_safe_room = true
-		print("[IntroScene] 玩家进入安全区")
+		print("[RoomScene] 玩家进入安全区")
 
 func _on_safe_zone_exited(body: Node) -> void:
 	if body == _player:
-		_in_safe_zone = false
 		_player.is_in_safe_room = false
-		print("[IntroScene] 玩家离开安全区")
-		GameManager.update_objective("寻找道具，前往公寓大门")
-
-func _on_street_entered(body: Node) -> void:
-	if body == _player:
-		print("[IntroScene] 玩家进入街道")
+		print("[RoomScene] 玩家离开安全区")
 
 # ============================================================
 # 交互回调
 # ============================================================
 
 func _on_phone_interacted(_interactor: Node) -> void:
-	if _phone_read:
+	if _has_read_phone:
 		return
-	_phone_read = true
+	_has_read_phone = true
 
-	var hud_node := get_node_or_null("IntroHUD")
+	var hud_node := get_node_or_null("RoomHUD")
 	if hud_node and hud_node.has_method("show_reading_panel"):
 		var wechat_text: String = """[color=#888888]【微信聊天记录】[/color]
 
@@ -397,38 +275,34 @@ func _on_phone_interacted(_interactor: Node) -> void:
 [color=#e8d8b0]妹妹：[/color] [color=#ff6b6b]别来！！！[/color]"""
 		hud_node.show_reading_panel("手机微信", wechat_text)
 
-	# ★ 标记剧情已读，更新任务目标
-	_has_read_phone = true
+	# 更新门提示文字
+	_door.interaction_hint = "走出房门"
+
 	await get_tree().create_timer(0.5).timeout
-	GameManager.update_objective("前往妹妹的公寓")
+	GameManager.update_objective("走出房门，去妹妹的公寓")
 
 func _on_door_interacted(_interactor: Node) -> void:
-	# ★ 剧情防跳关锁：必须先阅读手机才能进入
 	if not _has_read_phone:
-		print("[IntroScene] 【提示】我得先看看手机上的消息...")
+		print("[RoomScene] 【提示】我得先看看手机上的消息...")
 		return
 	if _transitioning:
 		return
 	_transitioning = true
-	_fade_to_level1()
 
-func _fade_to_level1() -> void:
-	# 创建黑屏过渡
+	_fade_to_street()
+
+func _fade_to_street() -> void:
 	var fade := ColorRect.new()
 	fade.name = "FadeRect"
 	fade.color = Color(0, 0, 0, 0)
 	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(fade)
 
-	# 淡出到黑
 	var tween := create_tween()
 	tween.tween_property(fade, "color:a", 1.0, 1.5)
 
 	await tween.finished
 
-	# ★ 切换场景前强制取消暂停，防止新场景被冻结
 	get_tree().paused = false
-
-	# 切换场景到 Level1（Main.tscn）
-	print("[IntroScene] 进入第一层：妹妹的公寓...")
-	get_tree().change_scene_to_file("res://levels/Main.tscn")
+	print("[RoomScene] 进入街道场景...")
+	get_tree().change_scene_to_file("res://levels/StreetScene.tscn")

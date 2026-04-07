@@ -54,7 +54,7 @@ func _physics_process(delta: float) -> void:
 	if _move_input != Vector2.ZERO:
 		_last_facing = _move_input.normalized()
 		_is_moving = true
-		if Input.is_action_pressed("ui_accept"):
+		if Input.is_action_pressed("sprint"):
 			_try_run(delta)
 		else:
 			_walk(delta)
@@ -247,7 +247,7 @@ func _update_interaction_prompt() -> void:
 	_interaction_prompt.global_position = global_position + Vector2(0, -50)
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept"):
+	if event.is_action_pressed("interact"):
 		_try_interact()
 
 func _try_interact() -> void:
@@ -268,4 +268,11 @@ func _try_interact() -> void:
 func _ready() -> void:
 	add_to_group("player")
 	_setup_interaction_area()
+	# ★ 白模占位视觉（让玩家可见）
+	var visual := ColorRect.new()
+	visual.name = "PlayerVisual"
+	visual.color = Color.GREEN
+	visual.custom_minimum_size = Vector2(32, 32)
+	visual.position = Vector2(-16, -16)
+	add_child(visual)
 	print("[Player] 已加入 'player' 分组，体力:%.1f 水分:%.1f 饱腹:%.1f" % [_stamina, _hydration, _satiety])
