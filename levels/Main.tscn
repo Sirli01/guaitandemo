@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dify0gigs763u"]
 
 [ext_resource type="Script" uid="uid://d18e3t5bfdegc" path="res://characters/Player.gd" id="1_h11cf"]
-[ext_resource type="Texture2D" uid="uid://divnhedj3oibm" path="res://icon.svg" id="1_s5j47"]
+[ext_resource type="Texture2D" uid="uid://divnhedj3oibm" path="res://guaitan/icon.svg" id="1_s5j47"]
 [ext_resource type="PackedScene" uid="uid://hxhq13vvsieq" path="res://items/physical_item_water_bottle.tscn" id="3_lbxsr"]
 [ext_resource type="PackedScene" uid="uid://bgoydxerwrf0e" path="res://levels/HUD.tscn" id="4_3vw7n"]
 [ext_resource type="PackedScene" uid="uid://b7cg1ehp1jt08" path="res://levels/inventory_ui.tscn" id="5_vmibe"]
@@ -24,10 +24,6 @@ shape = SubResource("RectangleShape2D_0plew")
 position_smoothing_enabled = true
 
 [node name="Sprite2D" type="Sprite2D" parent="Player" unique_id=30444866]
-texture = ExtResource("1_s5j47")
-
-[node name="Icon" type="Sprite2D" parent="." unique_id=592783112]
-position = Vector2(-2, 315)
 texture = ExtResource("1_s5j47")
 
 [node name="PhysicalItem_WaterBottle" parent="." unique_id=549234068 instance=ExtResource("3_lbxsr")]

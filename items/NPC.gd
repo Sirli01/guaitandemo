@@ -62,7 +62,6 @@ func _interaction_feedback(text: String) -> void:
 func _fade_label(label: Label) -> void:
 	var tween := create_tween()
 	tween.tween_property(label, "modulate:a", 1.0, 0.3)
-	await tween.parallel().finished
 	tween.tween_interval(1.5)
 	tween.tween_property(label, "modulate:a", 0.0, 0.5)
 	await tween.finished

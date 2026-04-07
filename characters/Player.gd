@@ -64,6 +64,7 @@ func _physics_process(delta: float) -> void:
 		_restore_stamina(delta, true)
 		_is_running = false
 
+
 	_update_survival(delta)
 	_apply_debuff(delta)
 	move_and_slide()

@@ -284,6 +284,10 @@ func _on_phone_interacted(_interactor: Node) -> void:
 func _on_door_interacted(_interactor: Node) -> void:
 	if not _has_read_phone:
 		print("[RoomScene] 【提示】我得先看看手机上的消息...")
+		# 显示屏幕警告提示
+		var hud_node := get_node_or_null("RoomHUD")
+		if hud_node and hud_node.has_method("update_counter_state_hint"):
+			hud_node.update_counter_state_hint("【提示】我得先看看手机上的消息...")
 		return
 	if _transitioning:
 		return

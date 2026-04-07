@@ -12,5 +12,5 @@ func _init() -> void:
 
 func use(_target: Node) -> void:
 	key_clue_found.emit("ayou_brown_pupils")
-	lore_item_read.emit(item_id, description)
+a	lore_item_read.emit(item_id, description)
 	print("[ItemAyouID] 发现关键线索：ayou_brown_pupils")
