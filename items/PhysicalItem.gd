@@ -1,7 +1,5 @@
 extends Interactable
 
-const Item = preload("res://items/Item.gd")
-
 @export var item_id: String = ""
 @export var item_scene: String = ""  # 例如 "res://items/ItemWater.gd"
 

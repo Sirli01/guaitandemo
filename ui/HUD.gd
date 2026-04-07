@@ -7,6 +7,12 @@ var _clock_label: Label
 var _warning_label: Label
 var _route_hint_label: Label
 
+# ReadingPanel controls
+var _reading_panel: ColorRect
+var _reading_title: Label
+var _reading_content: RichTextLabel
+var _reading_close_btn: Button
+
 var _player: Node = null
 var _game_manager: Node = null
 var _warning_flash_timer: float = 0.0
@@ -149,6 +155,42 @@ func _build_ui() -> void:
 	_route_hint_label.offset_top = -100
 	_route_hint_label.custom_minimum_size = Vector2(400, 40)
 
+	# ============================================================
+	# ReadingPanel（剧情/规则文本阅读界面）
+	# ============================================================
+	_reading_panel = ColorRect.new()
+	_reading_panel.name = "ReadingPanel"
+	_reading_panel.visible = false
+	add_child(_reading_panel)
+	_reading_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_reading_panel.color = Color(0.05, 0.05, 0.05, 0.95)
+
+	var reading_vbox := VBoxContainer.new()
+	reading_vbox.name = "ReadingVBox"
+	_reading_panel.add_child(reading_vbox)
+	reading_vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+	_reading_title = Label.new()
+	_reading_title.name = "ReadingTitle"
+	_reading_title.text = ""
+	_reading_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_reading_title.custom_minimum_size = Vector2(0, 50)
+	reading_vbox.add_child(_reading_title)
+
+	_reading_content = RichTextLabel.new()
+	_reading_content.name = "ReadingContent"
+	_reading_content.text = ""
+	_reading_content.bbcode_enabled = true
+	_reading_content.scroll_following = true
+	_reading_content.custom_minimum_size = Vector2(600, 350)
+	reading_vbox.add_child(_reading_content)
+
+	_reading_close_btn = Button.new()
+	_reading_close_btn.name = "ReadingCloseBtn"
+	_reading_close_btn.text = "[ 关闭 ]"
+	_reading_close_btn.pressed.connect(_on_reading_close)
+	reading_vbox.add_child(_reading_close_btn)
+
 func _connect_signals() -> void:
 	if _player != null:
 		if _player.has_signal("stamina_exhausted"):
@@ -163,6 +205,8 @@ func _connect_signals() -> void:
 			_game_manager.forbidden_period_start.connect(_on_forbidden_period_start)
 		if _game_manager.has_signal("forbidden_period_end"):
 			_game_manager.forbidden_period_end.connect(_on_forbidden_period_end)
+		if _game_manager.has_signal("lore_read"):
+			_game_manager.lore_read.connect(_on_lore_read)
 
 func _process(delta: float) -> void:
 	_update_stamina()
@@ -257,3 +301,29 @@ func hide_route_hint() -> void:
 
 func update_counter_state_hint(hint: String) -> void:
 	_show_warning(hint)
+
+# ============================================================
+# ReadingPanel 剧情文本阅读
+# ============================================================
+
+func show_reading_panel(title: String, content: String) -> void:
+	_reading_title.text = title
+	_reading_content.text = content
+	_reading_panel.visible = true
+	get_tree().paused = true
+	print("[HUD] 显示阅读面板: %s" % title)
+
+func _on_reading_close() -> void:
+	_reading_panel.visible = false
+	get_tree().paused = false
+	print("[HUD] 关闭阅读面板")
+
+func _on_lore_read(item_id: String, content: String) -> void:
+	var title_map: Dictionary = {
+		"sister_phone": "妹妹的手机备忘录",
+		"diary_page": "日记残页",
+		"resident_note": "住户遗书",
+		"childhood_photo": "童年合照"
+	}
+	var title: String = title_map.get(item_id, "剧情道具")
+	show_reading_panel(title, content)

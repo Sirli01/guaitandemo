@@ -20,5 +20,5 @@ func interact(interactor: Node) -> void:
 # ============================================================
 # 虚方法：子类重写实现具体交互逻辑
 # ============================================================
-func _on_interact(interactor: Node) -> void:
+func _on_interact(_interactor: Node) -> void:
 	print("[Interactable] %s 的 _on_interact 未被重写，请子类实现" % name)

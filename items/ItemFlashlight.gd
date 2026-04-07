@@ -14,7 +14,7 @@ func _init() -> void:
 	description = "照亮黑暗区域。照向怪物可吸引注意力但不触发对视。需要电池供电。"
 	is_key_item = false
 
-func use(target: Node) -> void:
+func use(_target: Node) -> void:
 	if battery_life <= 0.0:
 		print("[ItemFlashlight] 手电筒电量耗尽，请先装入电池")
 		return

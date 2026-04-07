@@ -5,6 +5,8 @@ signal forbidden_period_end
 signal key_item_acquired(item_id: String)
 signal game_over_triggered(reason: String)
 signal route_unlocked(route: String)
+signal lore_read(item_id: String, content: String)
+signal floor_transition_completed(new_floor: int)
 
 # ============================================================
 # 虚拟游戏时钟（基于 _process 累加，不依赖现实时间）
@@ -42,12 +44,12 @@ func _process(delta: float) -> void:
 
 func _update_game_time() -> void:
 	var total_minutes: int = int(_elapsed_seconds / 60.0)
-	var hours: int = (total_minutes / 60) % 24
+	var hours: int = int(total_minutes / 60.0) % 24
 	var minutes: int = total_minutes % 60
 	game_time_string = "%02d:%02d" % [hours, minutes]
 
 func _check_forbidden_period() -> void:
-	var hours: int = int(_elapsed_seconds / 3600.0) as int % 24
+	var hours: int = int(_elapsed_seconds / 3600.0) % 24
 	var was_forbidden: bool = is_forbidden_period
 
 	if hours >= 23 or hours < 7:
@@ -136,7 +138,41 @@ func on_route_unlocked(route: String) -> void:
 func on_reached_window() -> void:
 	print("[GameManager] 已到达窗户位置")
 
+func on_lore_read(item_id: String, content: String) -> void:
+	lore_read.emit(item_id, content)
+	if not collected_lore_items.has(item_id):
+		collected_lore_items.append(item_id)
+		print("[GameManager] 剧情道具已收集: %d/%d" % [collected_lore_items.size(), LORE_ITEM_COUNT])
+
 func on_lore_item_collected_late(item_id: String) -> void:
 	if not collected_lore_items.has(item_id):
 		collected_lore_items.append(item_id)
 		print("[GameManager] 剧情道具已收集: %d/%d" % [collected_lore_items.size(), LORE_ITEM_COUNT])
+
+# ============================================================
+# 楼层切换逻辑
+# ============================================================
+
+func on_floor_transition(current_floor: int, target_floor: int) -> void:
+	print("[GameManager] 楼层切换请求: %d 楼 → %d 楼" % [current_floor, target_floor])
+	var scene_path: String = ""
+	match target_floor:
+		1:
+			scene_path = "res://levels/Level1Controller.tscn"
+		2:
+			scene_path = "res://levels/Level2Controller.tscn"
+		3:
+			scene_path = "res://levels/Level3Controller.tscn"
+		_:
+			push_error("[GameManager] 未知楼层: %d" % target_floor)
+			return
+	_fade_and_switch_scene(scene_path, target_floor)
+
+func _fade_and_switch_scene(scene_path: String, new_floor: int) -> void:
+	get_tree().paused = true
+	print("[GameManager] 场景淡出切换至: %s" % scene_path)
+	await get_tree().create_timer(1.0).timeout
+	get_tree().change_scene_to_file(scene_path)
+	floor_transition_completed.emit(new_floor)
+	get_tree().paused = false
+	print("[GameManager] 楼层切换完成: %d 楼" % new_floor)

@@ -14,4 +14,5 @@ func _init() -> void:
 
 func use(_target: Node) -> void:
 	lore_item_read.emit(item_id, page_content)
+	GameManager.on_lore_read(item_id, page_content)
 	print("[ItemDiaryPage] 阅读日记残页：%s" % page_content)

@@ -28,9 +28,9 @@ func _build_ui() -> void:
 	_panel = Panel.new()
 	_panel.name = "Panel"
 	_panel.visible = false
+	add_child(_panel)
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
 	_panel.custom_minimum_size = Vector2(700, 400)
-	add_child(_panel)
 
 	# === 标题 ===
 	var title := Label.new()
@@ -106,13 +106,14 @@ func _connect_signals() -> void:
 	ItemSystem.inventory_changed.connect(_on_inventory_changed)
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("inventory"):
 		_toggle_inventory()
 
 func _toggle_inventory() -> void:
 	_panel.visible = not _panel.visible
 	get_tree().paused = _panel.visible
 	if _panel.visible:
+		_panel.position = (get_viewport().get_visible_rect().size - _panel.custom_minimum_size) / 2.0
 		_refresh_slots()
 		_clear_detail()
 	else:
