@@ -20,6 +20,7 @@ const NPCClass = preload("res://items/NPC.gd")
 var _elevator_cards_collected: int = 0
 var _sister_apartment_left: bool = false
 var _current_safe_room: String = ""
+var _silence_triggered: bool = false
 
 var _player: Node = null
 var _monster_1: Node = null
@@ -38,6 +39,8 @@ func _ready() -> void:
 	_setup_areas()
 	_spawn_all_level_items()
 	_spawn_environment_entities()
+	_connect_signals()
+	GameManager.update_objective("任务：探索妹妹的公寓，寻找线索")
 	print("[Level1Controller] Level1 就绪")
 
 # ============================================================
@@ -162,9 +165,10 @@ func _spawn_elevator(pos: Vector2, floor_num: int, target: int, required_item: S
 func _spawn_all_level_items() -> void:
 	var items: Array = [
 		["flashlight",    Vector2(150, 320), Color(1.0, 0.9, 0.3)],
-		["rule_page_1",  Vector2(320, 300), Color(0.8, 0.6, 0.2)],
+		["rule_page_1",   Vector2(320, 300), Color(0.8, 0.6, 0.2)],
 		["water_bottle", Vector2(420, 380), Color(0.3, 0.6, 1.0)],
-		["sister_phone", Vector2(180, 400), Color(0.9, 0.3, 0.9)],
+		["sister_phone",  Vector2(180, 400), Color(0.9, 0.3, 0.9)],
+		["ayou_id_card",  Vector2(580, 350), Color(0.3, 0.7, 0.9)],
 	]
 	for item_data in items:
 		var item_id: String = item_data[0]
@@ -214,6 +218,62 @@ func _spawn_environment_entities() -> void:
 	add_child(sister_npc)
 	print("[Level1Controller] 妹妹幻影 NPC 已生成")
 
+	# === NPC 1：戴墨镜的同行者 ===
+	var npc1: Node = NPCClass.new()
+	npc1.name = "NPC_SpectacledCompanion"
+	npc1.global_position = Vector2(380, 300)
+	npc1.npc_name = "戴墨镜的同行者"
+	npc1.npc_color = Color(0.15, 0.15, 0.2, 1.0)
+	npc1.dialogue_lines = [
+		"...别问我为什么戴墨镜。",
+		"这楼里的东西... 不是用眼睛看的。",
+		"[压低声音] 妹妹她... 早就不是第一次进来了。",
+	]
+	npc1.collision_layer = 2
+	npc1.collision_mask = 0
+	npc1.monitorable = true
+	add_child(npc1)
+	print("[Level1Controller] 戴墨镜的同行者 NPC 已生成")
+
+	# === NPC 2：惊恐的路人队友 ===
+	var npc2: Node = NPCClass.new()
+	npc2.name = "NPC_PanicTeammate"
+	npc2.global_position = Vector2(500, 400)
+	npc2.npc_name = "惊恐的路人"
+	npc2.npc_color = Color(0.9, 0.6, 0.5, 1.0)
+	npc2.dialogue_lines = [
+		"[喘气] 呼...呼...那东西追上来了吗？",
+		"我亲眼看到的... 那个走廊尽头的东西...",
+		"[发抖] 它有金色的瞳孔... 绝对不能对视！",
+	]
+	npc2.collision_layer = 2
+	npc2.collision_mask = 0
+	npc2.monitorable = true
+	add_child(npc2)
+	print("[Level1Controller] 惊恐的路人 NPC 已生成")
+
+# ============================================================
+# 沉默恐惧效果
+# ============================================================
+
+func _trigger_silence_effect() -> void:
+	_silence_triggered = true
+	print("[Level1Controller] 【恐惧效果】关门瞬间陷入死寂... 背景音关闭")
+	# 通知 AudioManager 停止所有环境音（如果存在）
+	var audio_manager: Node = get_node_or_null("/root/AudioManager")
+	if audio_manager and audio_manager.has_method("stop_ambient"):
+		audio_manager.stop_ambient()
+	else:
+		print("[Level1Controller] 无 AudioManager，仅模拟沉默效果")
+
+	# 显示恐惧提示
+	GameManager.update_objective("【恐惧】这栋楼... 安静得可怕...")
+
+	# 3秒后更新为正常目标
+	await get_tree().create_timer(3.0).timeout
+	if _current_safe_room == "":
+		GameManager.update_objective("任务：寻找手电筒和规则残页，离开第一层")
+
 # ============================================================
 # 区域检测
 # ============================================================
@@ -261,6 +321,24 @@ func _setup_areas() -> void:
 	locked_room.body_exited.connect(_on_locked_room_exited)
 
 # ============================================================
+# 信号连接
+# ============================================================
+
+func _connect_signals() -> void:
+	ItemSystem.key_item_acquired.connect(_on_key_item_acquired)
+
+func _on_key_item_acquired(item_id: String) -> void:
+	match item_id:
+		"rule_page_1":
+			GameManager.update_objective("任务：寻找2张权限卡，启动电梯离开第一层")
+		"ayou_id_card":
+			_elevator_cards_collected += 1
+			print("[Level1Controller] 权限卡已收集: %d/1" % _elevator_cards_collected)
+			if _elevator_cards_collected >= 1:
+				_activate_elevator()
+				GameManager.update_objective("任务：前往电梯，离开第一层")
+
+# ============================================================
 # 1. 玩家离开妹妹公寓 → 激活 Monster_1
 # ============================================================
 
@@ -276,6 +354,9 @@ func _on_sister_apartment_exited(body: Node) -> void:
 		_player.is_in_safe_room = false
 		_current_safe_room = ""
 		left_safe_room.emit("SisterApartment")
+		if not _silence_triggered:
+			_trigger_silence_effect()
+		GameManager.update_objective("任务：走廊很暗，寻找手电筒和规则残页")
 		print("[Level1Controller] 玩家离开妹妹公寓")
 		if not _sister_apartment_left:
 			_sister_apartment_left = true
@@ -318,10 +399,19 @@ func on_elevator_card_collected() -> void:
 		_activate_elevator()
 
 func _activate_elevator() -> void:
-	if _elevator != null and _elevator.has_method("activate"):
-		_elevator.activate()
+	var elev: Node = get_node_or_null("Elevator_Floor1")
+	if elev != null and elev.has_method("activate"):
+		elev.activate()
 		elevator_activated.emit()
 		print("[Level1Controller] 电梯已激活")
+	# 【悬疑结局拦截】千辛万苦完成 Demo → 直接触发悬疑结局
+	_trigger_suspense_ending()
+
+func _trigger_suspense_ending() -> void:
+	print("[Level1Controller] 【悬疑结局】触发...")
+	get_tree().paused = true
+	await get_tree().create_timer(1.0).timeout
+	get_tree().change_scene_to_file("res://levels/SuspenseEnding.tscn")
 
 # ============================================================
 # 5. 怪物激活/禁用

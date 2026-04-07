@@ -7,11 +7,13 @@ signal game_over_triggered(reason: String)
 signal route_unlocked(route: String)
 signal lore_read(item_id: String, content: String)
 signal floor_transition_completed(new_floor: int)
+signal objective_updated(objective: String)
 
 # ============================================================
 # 虚拟游戏时钟（基于 _process 累加，不依赖现实时间）
 # ============================================================
 var game_time_string: String = "21:00"
+var current_objective: String = ""
 var is_forbidden_period: bool = false
 var _elapsed_seconds: float = 75600.0  # 21:00（给玩家2小时准备时间）
 var _night_fall_triggered: bool = false
@@ -137,6 +139,11 @@ func on_route_unlocked(route: String) -> void:
 
 func on_reached_window() -> void:
 	print("[GameManager] 已到达窗户位置")
+
+func update_objective(text: String) -> void:
+	current_objective = text
+	objective_updated.emit(text)
+	print("[GameManager] 目标更新: %s" % text)
 
 func on_lore_read(item_id: String, content: String) -> void:
 	lore_read.emit(item_id, content)

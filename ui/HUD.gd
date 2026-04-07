@@ -6,6 +6,7 @@ var _satiety_bar: ProgressBar
 var _clock_label: Label
 var _warning_label: Label
 var _route_hint_label: Label
+var _objective_label: Label
 
 # ReadingPanel controls
 var _reading_panel: ColorRect
@@ -52,6 +53,22 @@ func _build_ui() -> void:
 	_stamina_bar.min_value = 0.0
 	_stamina_bar.custom_minimum_size = Vector2(200, 20)
 	stamina_panel.add_child(_stamina_bar)
+
+	# ============================================================
+	# 任务目标面板（体力条下方）
+	# ============================================================
+	_objective_label = Label.new()
+	_objective_label.name = "ObjectiveLabel"
+	_objective_label.text = ""
+	_objective_label.modulate = Color(0.9, 0.85, 0.6, 1.0)
+	_objective_label.add_to_group("hud_objective")
+	add_child(_objective_label)
+	_objective_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_objective_label.offset_left = 10
+	_objective_label.offset_top = 55
+	_objective_label.offset_right = 500
+	_objective_label.offset_bottom = 85
+	_objective_label.custom_minimum_size = Vector2(490, 30)
 
 	# ============================================================
 	# 生存双轨面板（右上角）
@@ -207,6 +224,8 @@ func _connect_signals() -> void:
 			_game_manager.forbidden_period_end.connect(_on_forbidden_period_end)
 		if _game_manager.has_signal("lore_read"):
 			_game_manager.lore_read.connect(_on_lore_read)
+		if _game_manager.has_signal("objective_updated"):
+			_game_manager.objective_updated.connect(_on_objective_updated)
 
 func _process(delta: float) -> void:
 	_update_stamina()
@@ -327,3 +346,6 @@ func _on_lore_read(item_id: String, content: String) -> void:
 	}
 	var title: String = title_map.get(item_id, "剧情道具")
 	show_reading_panel(title, content)
+
+func _on_objective_updated(objective: String) -> void:
+	_objective_label.text = objective
