@@ -260,6 +260,9 @@ func get_locked_target() -> Node:
 # ============================================================
 
 func _has_earplugs(npc: Node) -> bool:
+	# 玩家持有耳塞时免疫（通过 ItemSystem 检测）
+	if npc.is_in_group("player") and ItemSystem.has_item("earplug"):
+		return true
 	# 检查 NPC 是否有耳塞标记（通过 earplug_equipped 信号或属性）
 	if npc.has_method("is_wearing_earplugs"):
 		return npc.is_wearing_earplugs()
@@ -275,8 +278,8 @@ func is_in_safe_room(npc: Node) -> bool:
 	# 检查 NPC 是否在安全区
 	if npc.has_method("is_in_safe_room"):
 		return npc.is_in_safe_room()
-	if npc.has_property("is_in_safe_room"):
-		return npc.is_in_safe_room
+	if "is_in_safe_room" in npc:
+		return npc.get("is_in_safe_room")
 	return false
 
 # ============================================================
@@ -320,7 +323,7 @@ func _update_direction_icon_position() -> void:
 	icon_pos.x = clamp(icon_pos.x, 40, screen_size.x - 40)
 	icon_pos.y = clamp(icon_pos.y, 40, screen_size.y - 40)
 
-	_direction_icon.set_anchors_preset(Control.PRESET_CUSTOM)
+	_direction_icon.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_direction_icon.offset_left = icon_pos.x - 20
 	_direction_icon.offset_top = icon_pos.y - 20
 	_direction_icon.offset_right = icon_pos.x + 20

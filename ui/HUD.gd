@@ -17,6 +17,7 @@ var _reading_close_btn: Button
 var _player: Node = null
 var _game_manager: Node = null
 var _time_system: Node = null
+var _survival_system: Node = null
 var _warning_flash_timer: float = 0.0
 var _is_warning_active: bool = false
 var _warning_color: Color = Color.RED
@@ -25,6 +26,7 @@ func _ready() -> void:
 	_player = get_tree().get_first_node_in_group("player")
 	_game_manager = get_node_or_null("/root/GameManager")
 	_time_system = get_node_or_null("/root/TimeSystem")
+	_survival_system = get_node_or_null("/root/SurvivalSystem")
 	_build_ui()
 	_connect_signals()
 	print("[HUD] 动态UI已生成")
@@ -236,6 +238,12 @@ func _connect_signals() -> void:
 	if _time_system != null:
 		_time_system.time_updated.connect(_on_time_updated)
 
+	if _survival_system != null:
+		_survival_system.stamina_updated.connect(_on_survival_stamina_updated)
+		_survival_system.satiety_updated.connect(_on_survival_satiety_updated)
+		_survival_system.satiety_critical.connect(_on_satiety_critical)
+		_survival_system.stamina_exhausted.connect(_on_survival_stamina_exhausted)
+
 func _process(delta: float) -> void:
 	_update_stamina()
 	_update_survival()
@@ -243,39 +251,39 @@ func _process(delta: float) -> void:
 	_update_warning_flash(delta)
 
 func _update_stamina() -> void:
-	if _player == null:
-		return
-	var stamina: float = _player.get("_stamina") if "_stamina" in _player else 100.0
-	var stamina_max: float = _player.get("_stamina_max") if "_stamina_max" in _player else 100.0
-	var temp_bonus: float = _player.get("_stamina_temp_max_bonus") if "_stamina_temp_max_bonus" in _player else 0.0
-	var effective_max: float = stamina_max + temp_bonus
-
-	_stamina_bar.max_value = max(effective_max, 1.0)
-	_stamina_bar.value = clamp(stamina, 0.0, effective_max)
-
-	if stamina < 30.0:
-		_stamina_bar.modulate = Color.RED
-	else:
-		_stamina_bar.modulate = Color.GREEN
+	if _survival_system != null:
+		_stamina_bar.max_value = max(_survival_system.get_stamina_max(), 1.0)
+		_stamina_bar.value = clamp(_survival_system.get_stamina(), 0.0, _survival_system.get_stamina_max())
+		if _survival_system.get_stamina() < 30.0:
+			_stamina_bar.modulate = Color.RED
+		else:
+			_stamina_bar.modulate = Color.GREEN
+	elif _player != null:
+		var stamina: float = _player.get("_stamina") if "_stamina" in _player else 100.0
+		var stamina_max: float = _player.get("_stamina_max") if "_stamina_max" in _player else 100.0
+		var temp_bonus: float = _player.get("_stamina_temp_max_bonus") if "_stamina_temp_max_bonus" in _player else 0.0
+		var effective_max: float = stamina_max + temp_bonus
+		_stamina_bar.max_value = max(effective_max, 1.0)
+		_stamina_bar.value = clamp(stamina, 0.0, effective_max)
+		if stamina < 30.0:
+			_stamina_bar.modulate = Color.RED
+		else:
+			_stamina_bar.modulate = Color.GREEN
 
 func _update_survival() -> void:
-	if _player == null:
-		return
-	var hydration: float = _player.get("_hydration") if "_hydration" in _player else 80.0
-	var satiety: float = _player.get("_satiety") if "_satiety" in _player else 80.0
-
-	_hydration_bar.value = clamp(hydration, 0.0, 100.0)
-	_satiety_bar.value = clamp(satiety, 0.0, 100.0)
-
-	if hydration < 20.0:
-		_hydration_bar.modulate = Color.RED
-	else:
-		_hydration_bar.modulate = Color.BLUE
-
-	if satiety < 20.0:
-		_satiety_bar.modulate = Color.RED
-	else:
-		_satiety_bar.modulate = Color(1, 0.5, 0)
+	if _survival_system != null:
+		_satiety_bar.value = clamp(_survival_system.get_satiety(), 0.0, 100.0)
+		if _survival_system.get_satiety() < 20.0:
+			_satiety_bar.modulate = Color.RED
+		else:
+			_satiety_bar.modulate = Color(1.0, 0.8, 0.0)  # 黄色
+	elif _player != null:
+		var satiety: float = _player.get("_satiety") if "_satiety" in _player else 80.0
+		_satiety_bar.value = clamp(satiety, 0.0, 100.0)
+		if satiety < 20.0:
+			_satiety_bar.modulate = Color.RED
+		else:
+			_satiety_bar.modulate = Color(1, 0.5, 0)
 
 func _update_clock() -> void:
 	if _time_system == null:
@@ -301,6 +309,24 @@ func _on_player_stamina_exhausted() -> void:
 
 func _on_game_over_starvation() -> void:
 	_show_warning("饥饿过度！游戏结束")
+
+func _on_survival_stamina_updated(current: float, maximum: float) -> void:
+	_stamina_bar.max_value = max(maximum, 1.0)
+	_stamina_bar.value = clamp(current, 0.0, maximum)
+	if current < 30.0:
+		_stamina_bar.modulate = Color.RED
+	else:
+		_stamina_bar.modulate = Color.GREEN
+
+func _on_survival_satiety_updated(current: float) -> void:
+	_satiety_bar.value = clamp(current, 0.0, 100.0)
+	if current < 20.0:
+		_satiety_bar.modulate = Color.RED
+	else:
+		_satiety_bar.modulate = Color(1.0, 0.8, 0.0)  # 黄色
+
+func _on_satiety_critical() -> void:
+	_show_warning("饱食度过低！")
 
 func _show_warning(msg: String) -> void:
 	_is_warning_active = true

@@ -6,6 +6,25 @@ class_name NPC
 @export var npc_color: Color = Color(0.7, 0.5, 0.3, 1.0)
 
 var _dialogue_index: int = 0
+var is_alive: bool = true
+
+# ============================================================
+# 死亡逻辑（供 HeelMonster 等系统调用）
+# ============================================================
+
+func die() -> void:
+	if not is_alive:
+		return
+	is_alive = false
+	print("[NPC] %s 死亡！" % npc_name)
+
+	# 变红视觉占位
+	if has_node("NPCVisual"):
+		var visual: Node = get_node("NPCVisual")
+		visual.modulate = Color(1.0, 0.0, 0.0, 1.0)
+
+	await get_tree().create_timer(0.5).timeout
+	queue_free()
 
 func _ready() -> void:
 	super._ready()

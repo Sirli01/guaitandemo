@@ -94,5 +94,28 @@ func _check_morning_reset() -> void:
 # 规则解锁（供规则残页调用）
 # ============================================================
 
+signal rule_revealed(rule_text: String)
+
+# 已揭示规则列表
+var _revealed_rules: Array[String] = []
+
+const RULE_TEXTS: Dictionary = {
+	"rule_禁对视":     "禁止对视（23:00-07:00）",
+	"rule_电梯向上":   "电梯只会向上",
+	"rule_禁离群":     "禁止离群",
+	"rule_禁跑步3F":   "禁止跑步（3层）"
+}
+
+func reveal_rule(rule_id: String) -> void:
+	if _revealed_rules.has(rule_id):
+		return  # 已揭示不重复
+	var text: String = RULE_TEXTS.get(rule_id, rule_id)
+	_revealed_rules.append(rule_id)
+	rule_revealed.emit(text)
+	print("[RuleSystem] 规则揭示: %s → %s" % [rule_id, text])
+
+func is_rule_revealed(rule_id: String) -> bool:
+	return _revealed_rules.has(rule_id)
+
 func unlock_rule(rule_id: String) -> void:
-	print("[RuleSystem] 规则已解锁: %s" % rule_id)
+	reveal_rule(rule_id)
