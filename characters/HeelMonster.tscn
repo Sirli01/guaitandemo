@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dbmsqsr3u65yf"]
+
+[ext_resource type="Script" uid="uid://bdcj1kcvurw6d" path="res://characters/HeelMonster.gd" id="1"]
+
+[node name="HeelMonster" type="Node2D" unique_id=1535137632]
+script = ExtResource("1")

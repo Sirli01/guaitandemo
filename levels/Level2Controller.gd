@@ -9,6 +9,7 @@ signal game_over_triggered(reason: String)
 
 const ItemClass = preload("res://items/Item.gd")
 const PhysicalItemClass = preload("res://items/PhysicalItem.gd")
+const InteractableClass = preload("res://items/Interactable.gd")
 const DoorClass = preload("res://items/Door.gd")
 const HidingSpotClass = preload("res://items/HidingSpot.gd")
 const ElevatorClass = preload("res://items/Elevator.gd")
@@ -27,6 +28,15 @@ var _has_earplugs_equipped: bool = false
 var _current_safe_room: String = ""
 
 # ============================================================
+# 第二层谜题：镜子惊吓 -> 电梯卡 -> 电梯
+# ============================================================
+var _mirror: Node = null
+var _keycard: Node = null
+var _elevator_door: Node = null
+var _has_keycard: bool = false
+var _mirror_interacted: bool = false
+
+# ============================================================
 # 初始化
 # ============================================================
 
@@ -37,6 +47,22 @@ func _ready() -> void:
 	_spawn_all_level_items()
 	_spawn_environment_entities()
 	_connect_signals()
+	_spawn_mirror()
+	_spawn_keycard()
+	_spawn_elevator_door()
+	# 玩家从上一场景进入，放置在走廊最左侧
+	if _player != null:
+		_player.global_position = Vector2(100, 300)
+		# 确保带 Camera2D
+		var existing_camera: Node = _player.get_node_or_null("Camera2D")
+		if existing_camera == null:
+			var camera := Camera2D.new()
+			camera.name = "Camera2D"
+			camera.position_smoothing_enabled = true
+			camera.position_smoothing_speed = 8.0
+			_player.add_child(camera)
+			camera.make_current()
+	GameManager.update_objective("沿着走廊前进，寻找电梯")
 	print("[Level2Controller] Level2 就绪")
 
 # ============================================================
@@ -44,36 +70,19 @@ func _ready() -> void:
 # ============================================================
 
 func _build_level_geometry() -> void:
-	var wall_color: Color = Color(0.2, 0.18, 0.22, 1.0)
+	var wall_color: Color = Color(0.12, 0.10, 0.13, 1.0)  # 比第一层更暗的深灰色
 
-	# === 主走廊（水平长条）===
-	_spawn_wall_rect(Vector2(400, 100), Vector2(700, 20), wall_color)   # 上墙
-	_spawn_wall_rect(Vector2(400, 500), Vector2(700, 20), wall_color)  # 下墙
-	_spawn_wall_rect(Vector2(50, 100), Vector2(20, 420), wall_color)   # 左墙
-	_spawn_wall_rect(Vector2(750, 100), Vector2(20, 420), wall_color)  # 右墙
+	# === 狭长走廊（x: 0~1000，y: 200~400）===
+	# 上墙
+	_spawn_wall_rect(Vector2(500, 200), Vector2(1000, 20), wall_color)
+	# 下墙
+	_spawn_wall_rect(Vector2(500, 400), Vector2(1000, 20), wall_color)
+	# 左墙（封闭起点）
+	_spawn_wall_rect(Vector2(0, 300), Vector2(20, 200), wall_color)
+	# 右墙（封闭终点）
+	_spawn_wall_rect(Vector2(1000, 300), Vector2(20, 200), wall_color)
 
-	# === 小夏房间（上方镜子区域）===
-	_spawn_wall_rect(Vector2(200, 50), Vector2(200, 20), wall_color)   # 上墙
-	_spawn_wall_rect(Vector2(200, 150), Vector2(20, 100), wall_color)  # 左墙
-	_spawn_wall_rect(Vector2(380, 150), Vector2(20, 100), wall_color)  # 右墙
-
-	# === 隐藏房间（下方密室）===
-	_spawn_wall_rect(Vector2(550, 520), Vector2(200, 20), wall_color)  # 下墙
-	_spawn_wall_rect(Vector2(450, 520), Vector2(20, 100), wall_color)  # 左墙
-	_spawn_wall_rect(Vector2(750, 520), Vector2(20, 100), wall_color)  # 右墙
-
-	# === 走廊门 ===
-	_spawn_door(Vector2(150, 300), "door_l2_entrance")
-	_spawn_door(Vector2(650, 300), "door_l2_exit")
-
-	# === 躲藏点 ===
-	_spawn_hiding_spot(Vector2(300, 300), "hiding_l2_1")
-	_spawn_hiding_spot(Vector2(500, 400), "hiding_l2_2")
-
-	# === 电梯 ===
-	_spawn_elevator(Vector2(720, 300), 2, 3, "ayou_id_card")
-
-	print("[Level2Controller] 几何布局已生成")
+	print("[Level2Controller] 几何布局已生成（狭长走廊 x:0~1000, y:200~400）")
 
 func _spawn_wall_rect(pos: Vector2, size: Vector2, color: Color) -> void:
 	var wall := StaticBody2D.new()
@@ -322,3 +331,134 @@ func on_elevator_card_collected() -> void:
 
 func get_player() -> Node:
 	return _player
+
+# ============================================================
+# 第二层谜题：镜子惊吓 -> 电梯卡 -> 电梯
+# ============================================================
+
+# 镜子（走廊中间 x=500）
+func _spawn_mirror() -> void:
+	_mirror = InteractableClass.new()
+	_mirror.name = "Mirror"
+	_mirror.global_position = Vector2(500, 300)
+	_mirror.interaction_hint = "查看镜子"
+	_mirror.collision_layer = 2
+	_mirror.collision_mask = 0
+	_mirror.monitorable = true
+	add_child(_mirror)
+
+	var collision := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(20, 60)
+	collision.shape = shape
+	_mirror.add_child(collision)
+
+	var visual := ColorRect.new()
+	visual.color = Color(0.7, 0.75, 0.8, 0.6)  # 银灰色镜面
+	visual.size = Vector2(16, 56)
+	visual.position = Vector2(-8, -28)
+	_mirror.add_child(visual)
+
+	_mirror.interacted.connect(_on_mirror_interacted)
+	print("[Level2Controller] 镜子已生成（x=500）")
+
+# 电梯卡（走廊偏右 x=700）
+func _spawn_keycard() -> void:
+	_keycard = InteractableClass.new()
+	_keycard.name = "KeyCard"
+	_keycard.global_position = Vector2(700, 300)
+	_keycard.interaction_hint = "捡起电梯卡"
+	_keycard.collision_layer = 2
+	_keycard.collision_mask = 0
+	_keycard.monitorable = true
+	add_child(_keycard)
+
+	var collision := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(30, 20)
+	collision.shape = shape
+	_keycard.add_child(collision)
+
+	var visual := ColorRect.new()
+	visual.color = Color(0.0, 0.8, 1.0, 1.0)  # 青色门禁卡
+	visual.size = Vector2(28, 18)
+	visual.position = Vector2(-14, -9)
+	_keycard.add_child(visual)
+
+	_keycard.interacted.connect(_on_keycard_interacted)
+	print("[Level2Controller] 电梯卡已生成（x=700）")
+
+# 电梯门（走廊尽头 x=900）
+func _spawn_elevator_door() -> void:
+	_elevator_door = InteractableClass.new()
+	_elevator_door.name = "ElevatorDoor"
+	_elevator_door.global_position = Vector2(900, 300)
+	_elevator_door.interaction_hint = "呼叫电梯"
+	_elevator_door.collision_layer = 2
+	_elevator_door.collision_mask = 0
+	_elevator_door.monitorable = true
+	add_child(_elevator_door)
+
+	var collision := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(15, 80)
+	collision.shape = shape
+	_elevator_door.add_child(collision)
+
+	var visual := ColorRect.new()
+	visual.color = Color(0.3, 0.3, 0.35, 1.0)  # 深灰金属电梯门
+	visual.size = Vector2(12, 76)
+	visual.position = Vector2(-6, -38)
+	_elevator_door.add_child(visual)
+
+	_elevator_door.interacted.connect(_on_elevator_door_interacted)
+	print("[Level2Controller] 电梯门已生成（x=900）")
+
+# 镜子交互
+func _on_mirror_interacted(_interactor: Node) -> void:
+	if _mirror_interacted:
+		return
+	_mirror_interacted = true
+
+	print("【系统提示】：镜子里的倒影...动作似乎比你慢了半拍。")
+	GameManager.update_objective("快离开那面镜子！去走廊尽头找电梯卡！")
+
+# 电梯卡交互
+func _on_keycard_interacted(_interactor: Node) -> void:
+	if _has_keycard:
+		return
+	_has_keycard = true
+
+	if _keycard != null:
+		_keycard.queue_free()
+		_keycard = null
+	print("[Level2Controller] 捡起电梯卡")
+
+# 电梯门交互
+func _on_elevator_door_interacted(_interactor: Node) -> void:
+	if not _has_keycard:
+		print("[Level2Controller] 电梯需要刷卡才能启动")
+		var hud_node: Node = get_node_or_null("/root/HUD")
+		if hud_node and hud_node.has_method("update_counter_state_hint"):
+			hud_node.update_counter_state_hint("电梯需要刷卡才能启动")
+		return
+
+	print("[Level2Controller] 滴——电梯门开了")
+	_fade_to_level3()
+
+func _fade_to_level3() -> void:
+	var canvas := CanvasLayer.new()
+	var fade := ColorRect.new()
+	fade.name = "FadeRect"
+	fade.color = Color(0, 0, 0, 0)
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(fade)
+	add_child(canvas)
+
+	var tween := create_tween()
+	tween.tween_property(fade, "color:a", 1.0, 1.5)
+	await tween.finished
+
+	get_tree().paused = false
+	print("[Level2Controller] 切换至 Level3Controller.tscn ...")
+	get_tree().change_scene_to_file("res://levels/Level3Controller.tscn")
