@@ -164,8 +164,7 @@ func _check_event_a() -> void:
 	var stray_alive: bool = true
 	if "is_alive" in _npc_stray:
 		stray_alive = _npc_stray.is_alive
-	elif _npc_stray.has_property("is_alive"):
-		stray_alive = _npc_stray.is_alive
+	
 
 	# 男路人从活着变成死亡
 	if _npc_stray_was_alive and not stray_alive:
