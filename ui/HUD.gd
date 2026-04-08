@@ -388,3 +388,9 @@ func _on_lore_read(item_id: String, content: String) -> void:
 
 func _on_objective_updated(objective: String) -> void:
 	_objective_label.text = objective
+
+# ============================================================
+# 修复：补全缺失的信号接收函数
+# ============================================================
+func _on_survival_stamina_exhausted() -> void:
+	_show_warning("体力耗尽！")

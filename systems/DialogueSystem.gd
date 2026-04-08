@@ -6,7 +6,7 @@ extends Node
 signal dialogue_started()
 signal dialogue_finished()
 signal dialogue_line_finished()
-signal character Typedemarker
+signal character_typed
 
 # ============================================================
 # 状态

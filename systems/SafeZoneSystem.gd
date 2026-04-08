@@ -11,7 +11,7 @@ signal safe_zone_exited(zone_name: String)
 # ============================================================
 var _current_safe_zone: String = ""
 var is_in_safe_zone: bool = false
-var _registered_zones: Array[Node] = []
+
 
 func _ready() -> void:
 	print("[SafeZoneSystem] 就绪")

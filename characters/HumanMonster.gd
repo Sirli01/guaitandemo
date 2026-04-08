@@ -6,6 +6,7 @@ extends CharacterBody2D
 signal eye_contact_monster(monster: Node, target: Node)
 signal monster_died()
 signal player_controlling_monster(controlling: bool)
+signal monster_bound(monster: Node)
 
 # ============================================================
 # 常量
@@ -25,6 +26,9 @@ var _is_patrolling_forward: bool = true
 
 # 玩家是否在操控怪物身体
 var _player_controlling: bool = false
+
+# 绑定状态
+var is_bound: bool = false
 
 # 灵魂互换相关
 var _swapped_with_player: bool = false
@@ -193,3 +197,15 @@ func get_patrol_origin() -> Vector2:
 
 func set_patrol_center(pos: Vector2) -> void:
 	_patrol_origin = pos
+
+# ============================================================
+# 绳子绑定（智斗路线核心）
+# ============================================================
+
+func bind_with_rope() -> void:
+	if is_bound:
+		return
+	is_bound = true
+	velocity = Vector2.ZERO
+	monster_bound.emit(self)
+	print("[HumanMonster] 已被麻绳绑定！")

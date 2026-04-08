@@ -20,7 +20,7 @@ const PhysicalItemClass = preload("res://items/PhysicalItem.gd")
 const DoorClass = preload("res://items/Door.gd")
 const HidingSpotClass = preload("res://items/HidingSpot.gd")
 const ElevatorClass = preload("res://items/Elevator.gd")
-const NPCClass = preload("res://items/NPC.gd")
+const NPCBaseClass = preload("res://characters/NPCBase.gd")
 
 @export var monsters_patrol: Array[NodePath] = []
 
@@ -271,10 +271,11 @@ func _spawn_physical_item(item_id: String, spawn_pos: Vector2, color: Color) -> 
 
 func _spawn_environment_entities() -> void:
 	# === 林晚 NPC ===
-	var linwan_npc: Node = NPCClass.new()
+	var linwan_npc: Node = NPCBaseClass.new()
 	linwan_npc.name = "NPC_LinWan"
 	linwan_npc.global_position = Vector2(250, 150)
 	linwan_npc.npc_name = "林晚"
+	linwan_npc.display_name = "林晚"
 	linwan_npc.npc_color = Color(0.9, 0.7, 0.5, 1.0)
 	linwan_npc.dialogue_lines = [
 		"你终于来了... 一切都要结束了...",
