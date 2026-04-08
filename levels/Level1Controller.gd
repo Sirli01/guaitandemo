@@ -1,453 +1,179 @@
 extends Node2D
-class_name Level1Controller
 
-signal entered_safe_room(room_name: String)
-signal left_safe_room(room_name: String)
-signal elevator_activated
-signal game_over_triggered(reason: String)
-
-@export var monster_1_path: NodePath = ^"Monsters/Monster_1"
-@export var elevator_path: NodePath = ^"Elevator"
-
-const ELEVATOR_CARDS_REQUIRED: int = 2
-const ItemClass = preload("res://items/Item.gd")
-const PhysicalItemClass = preload("res://items/PhysicalItem.gd")
-const DoorClass = preload("res://items/Door.gd")
-const HidingSpotClass = preload("res://items/HidingSpot.gd")
-const ElevatorClass = preload("res://items/Elevator.gd")
-const NPCClass = preload("res://items/NPC.gd")
-
-var _elevator_cards_collected: int = 0
-var _sister_apartment_left: bool = false
-var _current_safe_room: String = ""
-var _silence_triggered: bool = false
+const PlayerClass = preload("res://characters/Player.gd")
+const InteractableClass = preload("res://items/Interactable.gd")
 
 var _player: Node = null
-var _monster_1: Node = null
-var _elevator: Node = null
-
-# ============================================================
-# 初始化
-# ============================================================
+var _diary: Node = null
+var _exit_door: Node = null
+var _apartment_key: Node = null
+var _is_door_unlocked: bool = false
+var _transitioning: bool = false
 
 func _ready() -> void:
-	_build_level_geometry()
-	_player = get_tree().get_first_node_in_group("player")
-	_monster_1 = get_node_or_null(monster_1_path)
-	_elevator = get_node_or_null(elevator_path)
-	_disable_monster_1_if_exists()
-	_setup_areas()
-	_spawn_all_level_items()
-	_spawn_environment_entities()
-	_connect_signals()
-	GameManager.update_objective("任务：探索妹妹的公寓，寻找线索")
-	print("[Level1Controller] Level1 就绪")
+	_build_geometry()
+	_spawn_player()
+	_spawn_diary()
+	_spawn_exit_door()
+	GameManager.update_objective("寻找妹妹的下落")
+	print("[Level1Controller] 第一层（妹妹公寓）就绪")
 
-# ============================================================
-# 程序化几何生成（墙壁/地板/房间布局）
-# ============================================================
+func _build_geometry() -> void:
+	# 绘制浅灰色客厅地板
+	_spawn_floor(Vector2(400, 300), Vector2(600, 400), Color(0.2, 0.2, 0.2, 1.0))
+	# 房间四面墙壁
+	_spawn_wall(Vector2(100, 300), Vector2(20, 400), Color(0.1, 0.1, 0.1, 1.0)) # 左墙
+	_spawn_wall(Vector2(700, 300), Vector2(20, 400), Color(0.1, 0.1, 0.1, 1.0)) # 右墙
+	_spawn_wall(Vector2(400, 100), Vector2(600, 20), Color(0.1, 0.1, 0.1, 1.0)) # 上墙
+	_spawn_wall(Vector2(400, 500), Vector2(600, 20), Color(0.1, 0.1, 0.1, 1.0)) # 下墙
+	# 客厅中央的桌子
+	_spawn_furniture(Vector2(400, 300), Vector2(120, 80), Color(0.3, 0.2, 0.1, 1.0))
 
-func _build_level_geometry() -> void:
-	var wall_color: Color = Color(0.25, 0.2, 0.2, 1.0)
-
-	# === 妹妹公寓房间（左侧） ===
-	_spawn_wall_rect(Vector2(50, 200), Vector2(200, 20), wall_color)   # 上墙
-	_spawn_wall_rect(Vector2(50, 450), Vector2(200, 20), wall_color)   # 下墙
-	_spawn_wall_rect(Vector2(50, 200), Vector2(20, 270), wall_color)  # 左墙
-	_spawn_wall_rect(Vector2(230, 200), Vector2(20, 270), wall_color) # 右墙
-
-	# === 走廊（中间） ===
-	_spawn_wall_rect(Vector2(250, 200), Vector2(300, 20), wall_color)  # 走廊上墙
-	_spawn_wall_rect(Vector2(250, 450), Vector2(300, 20), wall_color) # 走廊下墙
-
-	# === 带锁房间（右侧） ===
-	_spawn_wall_rect(Vector2(560, 150), Vector2(180, 20), wall_color)  # 上墙
-	_spawn_wall_rect(Vector2(560, 500), Vector2(180, 20), wall_color)  # 下墙
-	_spawn_wall_rect(Vector2(720, 150), Vector2(20, 370), wall_color)  # 右墙
-
-	# 走廊右侧开口连接带锁房间
-
-	# === 门（妹妹公寓出口） ===
-	_spawn_door(Vector2(230, 300), "door_sister_to_corridor")
-
-	# === 柜子/躲藏点（走廊） ===
-	_spawn_hiding_spot(Vector2(380, 340), "hiding_corridor_1")
-
-	# === 电梯（走廊尽头） ===
-	_spawn_elevator(Vector2(500, 320), 1, 2, "ayou_id_card")
-
-	print("[Level1Controller] 几何布局已生成")
-
-func _spawn_wall_rect(pos: Vector2, size: Vector2, color: Color) -> void:
+func _spawn_wall(pos: Vector2, size: Vector2, color: Color) -> void:
 	var wall := StaticBody2D.new()
-	wall.name = "Wall_%s" % pos
 	wall.global_position = pos
 	wall.collision_layer = 1
 	wall.collision_mask = 0
 	add_child(wall)
-
 	var shape := RectangleShape2D.new()
 	shape.size = size
 	var collision := CollisionShape2D.new()
 	collision.shape = shape
 	wall.add_child(collision)
-
 	var rect := ColorRect.new()
 	rect.color = color
 	rect.size = size
 	rect.position = Vector2(-size.x / 2, -size.y / 2)
 	wall.add_child(rect)
 
-func _spawn_door(pos: Vector2, door_id: String) -> void:
-	var door: Node = DoorClass.new()
-	door.name = "Door_%s" % door_id
-	door.global_position = pos
-	door.door_id = door_id
-	door.collision_layer = 2
-	door.collision_mask = 0
-	door.monitorable = true
-	add_child(door)
-	print("[Level1Controller] 门已生成: %s @ %v" % [door_id, pos])
+func _spawn_floor(pos: Vector2, size: Vector2, color: Color) -> void:
+	var floor_rect := StaticBody2D.new()
+	floor_rect.global_position = pos
+	add_child(floor_rect)
+	var rect := ColorRect.new()
+	rect.color = color
+	rect.size = size
+	rect.position = Vector2(-size.x / 2, -size.y / 2)
+	floor_rect.add_child(rect)
 
-func _spawn_hiding_spot(pos: Vector2, spot_id: String) -> void:
-	var spot: Node = HidingSpotClass.new()
-	spot.name = "HidingSpot_%s" % spot_id
-	spot.global_position = pos
-	spot.collision_layer = 2
-	spot.collision_mask = 0
-	spot.monitorable = true
-	add_child(spot)
+func _spawn_furniture(pos: Vector2, size: Vector2, color: Color) -> void:
+	_spawn_wall(pos, size, color)
 
-	var collision := CollisionShape2D.new()
-	var shape := CircleShape2D.new()
-	shape.radius = 24.0
-	collision.shape = shape
-	spot.add_child(collision)
+func _spawn_player() -> void:
+	_player = PlayerClass.new()
+	_player.name = "Player"
+	_player.global_position = Vector2(200, 400) # 玩家在左下角出生
+	add_child(_player)
+	var camera := Camera2D.new()
+	camera.name = "Camera2D"
+	camera.position_smoothing_enabled = true
+	camera.position_smoothing_speed = 8.0
+	_player.add_child(camera)
+	camera.make_current()
 
-	var visual := ColorRect.new()
-	visual.color = Color(0.4, 0.3, 0.2, 0.8)
-	visual.size = Vector2(40, 40)
-	visual.position = Vector2(-20, -20)
-	spot.add_child(visual)
-
-	print("[Level1Controller] 躲藏点已生成: %s @ %v" % [spot_id, pos])
-
-func _spawn_elevator(pos: Vector2, floor_num: int, target: int, required_item: String) -> void:
-	var elev: Node = ElevatorClass.new()
-	elev.name = "Elevator_Floor%d" % floor_num
-	elev.global_position = pos
-	elev.floor_number = floor_num
-	elev.target_floor = target
-	elev.required_item_id = required_item
-	elev.collision_layer = 2
-	elev.collision_mask = 0
-	elev.monitorable = true
-	add_child(elev)
-
+func _spawn_diary() -> void:
+	_diary = InteractableClass.new()
+	_diary.name = "Diary"
+	_diary.global_position = Vector2(400, 300) # 放在桌子上
+	_diary.interaction_hint = "阅读日记"
+	_diary.collision_layer = 2
+	_diary.collision_mask = 0
+	_diary.monitorable = true
+	add_child(_diary)
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(50, 50)
+	shape.size = Vector2(30, 30)
 	collision.shape = shape
-	elev.add_child(collision)
-
+	_diary.add_child(collision)
 	var visual := ColorRect.new()
-	visual.color = Color(0.6, 0.5, 0.3, 1.0)
-	visual.size = Vector2(46, 46)
-	visual.position = Vector2(-23, -23)
-	elev.add_child(visual)
+	visual.color = Color(0.8, 0.8, 0.8, 1.0)
+	visual.size = Vector2(20, 20)
+	visual.position = Vector2(-10, -10)
+	_diary.add_child(visual)
+	_diary.interacted.connect(_on_diary_interacted)
 
-	print("[Level1Controller] 电梯已生成: floor %d -> %d" % [floor_num, target])
-
-# ============================================================
-# 全自动道具生成系统
-# ============================================================
-
-func _spawn_all_level_items() -> void:
-	var items: Array = [
-		["flashlight",    Vector2(150, 320), Color(1.0, 0.9, 0.3)],
-		["rule_page_1",   Vector2(320, 300), Color(0.8, 0.6, 0.2)],
-		["water_bottle", Vector2(420, 380), Color(0.3, 0.6, 1.0)],
-		["sister_phone",  Vector2(180, 400), Color(0.9, 0.3, 0.9)],
-		["ayou_id_card",  Vector2(580, 350), Color(0.3, 0.7, 0.9)],
-	]
-	for item_data in items:
-		var item_id: String = item_data[0]
-		var pos: Vector2 = item_data[1]
-		var color: Color = item_data[2]
-		_spawn_physical_item(item_id, pos, color)
-
-func _spawn_physical_item(item_id: String, spawn_pos: Vector2, color: Color) -> void:
-	var entity: Node = PhysicalItemClass.new()
-	entity.name = "PhysItem_%s" % item_id
-	entity.global_position = spawn_pos
-	entity.item_id = item_id
-	entity.collision_layer = 2
-	entity.collision_mask = 0
-	entity.monitorable = true
-	add_child(entity)
-
+func _spawn_exit_door() -> void:
+	_exit_door = InteractableClass.new()
+	_exit_door.name = "ExitDoor"
+	_exit_door.global_position = Vector2(690, 300) # 右侧出口门
+	_exit_door.interaction_hint = "门被反锁了"
+	_exit_door.collision_layer = 2
+	_exit_door.collision_mask = 0
+	_exit_door.monitorable = true
+	add_child(_exit_door)
 	var collision := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(32, 32)
+	shape.size = Vector2(20, 80)
 	collision.shape = shape
-	entity.add_child(collision)
-
+	_exit_door.add_child(collision)
 	var visual := ColorRect.new()
-	visual.color = color
-	visual.size = Vector2(28, 28)
-	visual.position = Vector2(-14, -14)
-	entity.add_child(visual)
+	visual.color = Color(0.4, 0.2, 0.1, 1.0)
+	visual.size = Vector2(20, 80)
+	visual.position = Vector2(-10, -40)
+	_exit_door.add_child(visual)
+	_exit_door.interacted.connect(_on_exit_door_interacted)
 
-	print("[Level1Controller] 实体道具已生成: %s @ %v" % [item_id, spawn_pos])
+func _on_diary_interacted(_interactor: Node) -> void:
+	print("【日记】：日记最后一页写着：千万不要回头看……")
+	GameManager.update_objective("找到钥匙离开公寓")
+	
+	# 日记读完消失
+	_diary.queue_free()
+	
+	# 在房间右上角生成钥匙
+	_spawn_apartment_key()
 
-func _spawn_environment_entities() -> void:
-	# === 妹妹幻影 NPC ===
-	var sister_npc: Node = NPCClass.new()
-	sister_npc.name = "NPC_Sister"
-	sister_npc.global_position = Vector2(140, 350)
-	sister_npc.npc_name = "妹妹幻影"
-	sister_npc.npc_color = Color(0.8, 0.6, 0.9, 1.0)
-	sister_npc.dialogue_lines = [
-		"姐姐... 你终于来了...",
-		"我在这个公寓里等你好久了...",
-		"规则... 规则里藏着你需要的东西...",
-	]
-	sister_npc.collision_layer = 2
-	sister_npc.collision_mask = 0
-	sister_npc.monitorable = true
-	add_child(sister_npc)
-	print("[Level1Controller] 妹妹幻影 NPC 已生成")
+func _spawn_apartment_key() -> void:
+	_apartment_key = InteractableClass.new()
+	_apartment_key.name = "ApartmentKey"
+	_apartment_key.global_position = Vector2(600, 150) # 右上角
+	_apartment_key.interaction_hint = "捡起钥匙"
+	_apartment_key.collision_layer = 2
+	_apartment_key.collision_mask = 0
+	_apartment_key.monitorable = true
+	add_child(_apartment_key)
+	var collision := CollisionShape2D.new()
+	var shape := RectangleShape2D.new()
+	shape.size = Vector2(20, 20)
+	collision.shape = shape
+	_apartment_key.add_child(collision)
+	var visual := ColorRect.new()
+	visual.color = Color(1.0, 0.8, 0.0, 1.0) # 金色的钥匙
+	visual.size = Vector2(14, 14)
+	visual.position = Vector2(-7, -7)
+	_apartment_key.add_child(visual)
+	_apartment_key.interacted.connect(_on_key_interacted)
 
-	# === NPC 1：戴墨镜的同行者 ===
-	var npc1: Node = NPCClass.new()
-	npc1.name = "NPC_SpectacledCompanion"
-	npc1.global_position = Vector2(380, 300)
-	npc1.npc_name = "戴墨镜的同行者"
-	npc1.npc_color = Color(0.15, 0.15, 0.2, 1.0)
-	npc1.dialogue_lines = [
-		"...别问我为什么戴墨镜。",
-		"这楼里的东西... 不是用眼睛看的。",
-		"[压低声音] 妹妹她... 早就不是第一次进来了。",
-	]
-	npc1.collision_layer = 2
-	npc1.collision_mask = 0
-	npc1.monitorable = true
-	add_child(npc1)
-	print("[Level1Controller] 戴墨镜的同行者 NPC 已生成")
+func _on_key_interacted(_interactor: Node) -> void:
+	print("[Level1Controller] 获得了公寓钥匙！")
+	_apartment_key.queue_free()
+	_is_door_unlocked = true
+	_exit_door.interaction_hint = "打开房门"
 
-	# === NPC 2：惊恐的路人队友 ===
-	var npc2: Node = NPCClass.new()
-	npc2.name = "NPC_PanicTeammate"
-	npc2.global_position = Vector2(500, 400)
-	npc2.npc_name = "惊恐的路人"
-	npc2.npc_color = Color(0.9, 0.6, 0.5, 1.0)
-	npc2.dialogue_lines = [
-		"[喘气] 呼...呼...那东西追上来了吗？",
-		"我亲眼看到的... 那个走廊尽头的东西...",
-		"[发抖] 它有金色的瞳孔... 绝对不能对视！",
-	]
-	npc2.collision_layer = 2
-	npc2.collision_mask = 0
-	npc2.monitorable = true
-	add_child(npc2)
-	print("[Level1Controller] 惊恐的路人 NPC 已生成")
+func _on_exit_door_interacted(_interactor: Node) -> void:
+	if not _is_door_unlocked:
+		print("门打不开，似乎需要钥匙。")
+		return
+		
+	if _transitioning:
+		return
+	_transitioning = true
+	
+	print("离开公寓，前往第二层...")
+	_fade_to_level2()
 
-# ============================================================
-# 沉默恐惧效果
-# ============================================================
+func _fade_to_level2() -> void:
+	var canvas = CanvasLayer.new()
+	var fade := ColorRect.new()
+	fade.name = "FadeRect"
+	fade.color = Color(0, 0, 0, 0)
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(fade)
+	add_child(canvas)
 
-func _trigger_silence_effect() -> void:
-	_silence_triggered = true
-	print("[Level1Controller] 【恐惧效果】关门瞬间陷入死寂... 背景音关闭")
-	# 通知 AudioManager 停止所有环境音（如果存在）
-	var audio_manager: Node = get_node_or_null("/root/AudioManager")
-	if audio_manager and audio_manager.has_method("stop_ambient"):
-		audio_manager.stop_ambient()
-	else:
-		print("[Level1Controller] 无 AudioManager，仅模拟沉默效果")
+	var tween := create_tween()
+	tween.tween_property(fade, "color:a", 1.0, 1.5)
 
-	# 显示恐惧提示
-	GameManager.update_objective("【恐惧】这栋楼... 安静得可怕...")
-
-	# 3秒后更新为正常目标
-	await get_tree().create_timer(3.0).timeout
-	if _current_safe_room == "":
-		GameManager.update_objective("任务：寻找手电筒和规则残页，离开第一层")
-
-# ============================================================
-# 区域检测
-# ============================================================
-
-func _setup_areas() -> void:
-	var sister_apartment := Area2D.new()
-	sister_apartment.name = "Rooms/SisterApartment"
-	sister_apartment.global_position = Vector2(140, 320)
-	sister_apartment.collision_layer = 4
-	sister_apartment.collision_mask = 0
-	add_child(sister_apartment)
-	var ss_shape := RectangleShape2D.new()
-	ss_shape.size = Vector2(160, 230)
-	var ss_collision := CollisionShape2D.new()
-	ss_collision.shape = ss_shape
-	sister_apartment.add_child(ss_collision)
-	sister_apartment.body_entered.connect(_on_sister_apartment_entered)
-	sister_apartment.body_exited.connect(_on_sister_apartment_exited)
-
-	var corridor := Area2D.new()
-	corridor.name = "Rooms/Corridor"
-	corridor.global_position = Vector2(400, 320)
-	corridor.collision_layer = 4
-	corridor.collision_mask = 0
-	add_child(corridor)
-	var corr_shape := RectangleShape2D.new()
-	corr_shape.size = Vector2(140, 230)
-	var corr_collision := CollisionShape2D.new()
-	corr_collision.shape = corr_shape
-	corridor.add_child(corr_collision)
-	corridor.body_entered.connect(_on_corridor_entered)
-
-	var locked_room := Area2D.new()
-	locked_room.name = "Rooms/LockedRoom_1"
-	locked_room.global_position = Vector2(640, 320)
-	locked_room.collision_layer = 4
-	locked_room.collision_mask = 0
-	add_child(locked_room)
-	var lr_shape := RectangleShape2D.new()
-	lr_shape.size = Vector2(140, 330)
-	var lr_collision := CollisionShape2D.new()
-	lr_collision.shape = lr_shape
-	locked_room.add_child(lr_collision)
-	locked_room.body_entered.connect(_on_locked_room_entered)
-	locked_room.body_exited.connect(_on_locked_room_exited)
-
-# ============================================================
-# 信号连接
-# ============================================================
-
-func _connect_signals() -> void:
-	ItemSystem.key_item_acquired.connect(_on_key_item_acquired)
-
-func _on_key_item_acquired(item_id: String) -> void:
-	match item_id:
-		"rule_page_1":
-			GameManager.update_objective("任务：寻找2张权限卡，启动电梯离开第一层")
-		"ayou_id_card":
-			_elevator_cards_collected += 1
-			print("[Level1Controller] 权限卡已收集: %d/1" % _elevator_cards_collected)
-			if _elevator_cards_collected >= 1:
-				_activate_elevator()
-				GameManager.update_objective("任务：前往电梯，离开第一层")
-
-# ============================================================
-# 1. 玩家离开妹妹公寓 → 激活 Monster_1
-# ============================================================
-
-func _on_sister_apartment_entered(body: Node) -> void:
-	if body == _player:
-		_current_safe_room = "SisterApartment"
-		_player.is_in_safe_room = true
-		entered_safe_room.emit("SisterApartment")
-		print("[Level1Controller] 玩家进入妹妹公寓（安全区）")
-
-func _on_sister_apartment_exited(body: Node) -> void:
-	if body == _player:
-		_player.is_in_safe_room = false
-		_current_safe_room = ""
-		left_safe_room.emit("SisterApartment")
-		if not _silence_triggered:
-			_trigger_silence_effect()
-		GameManager.update_objective("任务：走廊很暗，寻找手电筒和规则残页")
-		print("[Level1Controller] 玩家离开妹妹公寓")
-		if not _sister_apartment_left:
-			_sister_apartment_left = true
-			_activate_monster_1()
-
-# ============================================================
-# 2. 走廊
-# ============================================================
-
-func _on_corridor_entered(body: Node) -> void:
-	if body == _player:
-		_player.is_in_safe_room = false
-		print("[Level1Controller] 玩家进入走廊")
-
-# ============================================================
-# 3. 带锁房间
-# ============================================================
-
-func _on_locked_room_entered(body: Node) -> void:
-	if body == _player:
-		_current_safe_room = "LockedRoom_1"
-		_player.is_in_safe_room = true
-		entered_safe_room.emit("LockedRoom_1")
-		print("[Level1Controller] 玩家进入带锁房间（安全区）")
-
-func _on_locked_room_exited(body: Node) -> void:
-	if body == _player:
-		_current_safe_room = ""
-		_player.is_in_safe_room = false
-		left_safe_room.emit("LockedRoom_1")
-
-# ============================================================
-# 4. 电梯权限卡
-# ============================================================
-
-func on_elevator_card_collected() -> void:
-	_elevator_cards_collected += 1
-	print("[Level1Controller] 电梯权限卡: %d/%d" % [_elevator_cards_collected, ELEVATOR_CARDS_REQUIRED])
-	if _elevator_cards_collected >= ELEVATOR_CARDS_REQUIRED:
-		_activate_elevator()
-
-func _activate_elevator() -> void:
-	var elev: Node = get_node_or_null("Elevator_Floor1")
-	if elev != null and elev.has_method("activate"):
-		elev.activate()
-		elevator_activated.emit()
-		print("[Level1Controller] 电梯已激活")
-	# 【悬疑结局拦截】千辛万苦完成 Demo → 直接触发悬疑结局
-	_trigger_suspense_ending()
-
-func _trigger_suspense_ending() -> void:
-	print("[Level1Controller] 【悬疑结局】触发...")
-	get_tree().paused = true
-	await get_tree().create_timer(1.0).timeout
-	get_tree().change_scene_to_file("res://levels/SuspenseEnding.tscn")
-
-# ============================================================
-# 5. 怪物激活/禁用
-# ============================================================
-
-func _activate_monster_1() -> void:
-	if _monster_1 != null:
-		_monster_1.set_process(true)
-		_monster_1.set_physics_process(true)
-		if "current_state" in _monster_1:
-			_monster_1.current_state = _monster_1.State.PATROL
-		print("[Level1Controller] Monster_1 已激活")
-
-func _disable_monster_1_if_exists() -> void:
-	if _monster_1 != null:
-		_monster_1.set_process(false)
-		_monster_1.set_physics_process(false)
-
-# ============================================================
-# 6. 游戏结束
-# ============================================================
-
-func trigger_game_over(reason: String) -> void:
-	game_over_triggered.emit(reason)
-	GameManager.trigger_game_over(reason)
-	print("[Level1Controller] 游戏结束，原因: %s" % reason)
-
-# ============================================================
-# 对外接口
-# ============================================================
-
-func get_player() -> Node:
-	return _player
-
-func get_current_safe_room() -> String:
-	return _current_safe_room
-
-func is_in_safe_room() -> bool:
-	return _current_safe_room != ""
+	await tween.finished
+	print("[Level1Controller] 切换至 Level2Controller.tscn ...")
+	get_tree().change_scene_to_file("res://levels/Level2Controller.tscn")
