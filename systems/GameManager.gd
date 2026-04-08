@@ -61,6 +61,7 @@ func _check_forbidden_period() -> void:
 			_night_fall_triggered = true
 			print("[GameManager] 禁对视时段开始 (23:00-07:00)")
 	else:
+		is_forbidden_period = false
 		if was_forbidden and not is_forbidden_period:
 			forbidden_period_end.emit()
 			_night_fall_triggered = false

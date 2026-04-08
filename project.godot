@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 RuleSystem="*uid://cc71u2j4j0ehn"
 ItemSystem="*uid://bh5wc2vuq0tof"
 GameManager="*uid://cck75pv8o5pcq"
+TimeSystem="*uid://ctimesys00001"
 
 [input]
 

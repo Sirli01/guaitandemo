@@ -44,6 +44,7 @@ func _physics_process(delta: float) -> void:
 		State.LOST:
 			_do_lost(delta)
 
+	_detect_player()
 	_detect_eye_contact()
 	move_and_slide()
 
@@ -110,6 +111,32 @@ func on_player_lost(player: Node) -> void:
 		_switch_state(State.LOST)
 
 # ============================================================
+# 视野检测（扇形区域，检测 player 组节点）
+# ============================================================
+
+func _detect_player() -> void:
+	var players: Array = get_tree().get_nodes_in_group("player")
+	if players.is_empty():
+		return
+	var player: Node = players[0]
+	if not is_instance_valid(player):
+		return
+
+	var to_player: Vector2 = player.global_position - global_position
+	var distance: float = to_player.length()
+	if distance > sight_radius:
+		on_player_lost(player)
+		return
+
+	var forward: Vector2 = Vector2.RIGHT.rotated(global_rotation)
+	var angle_diff: float = rad_to_deg(forward.angle_to(to_player))
+	if abs(angle_diff) > sight_angle / 2.0:
+		on_player_lost(player)
+		return
+
+	on_player_detected(player)
+
+# ============================================================
 # 对视检测（锥形区域，正前方 60 度，80px）
 # ============================================================
 
@@ -154,33 +181,4 @@ func take_damage(amount: float) -> void:
 # ============================================================
 
 func _ready() -> void:
-	print("===== Monster 验收测试 =====")
-	_test_state_transitions()
-	print("===== 测试完成 =====")
-
-func _test_state_transitions() -> void:
-	print("[TEST] 初始状态: %s (应为 PATROL)" % State.keys()[current_state])
-	_switch_state(State.CHASE)
-	print("[TEST] 切换后状态: %s (应为 CHASE)" % State.keys()[current_state])
-	_chase_timer = 9.0
-	_do_chase(0.0)
-	print("[TEST] chase_timer>8s 触发 LOST: %s (应为 LOST)" % State.keys()[current_state])
-	_lost_timer = 3.0
-	_do_lost(0.0)
-	print("[TEST] lost_timer>=3s 返回 PATROL: %s (应为 PATROL)" % State.keys()[current_state])
-	_bind_with_rope_test()
-	_eye_contact_test()
-
-func _bind_with_rope_test() -> void:
-	bind_with_rope()
-	print("[TEST] is_bound=%s (应为 true)" % is_bound)
-
-func _eye_contact_test() -> void:
-	var dummy_player := Node.new()
-	dummy_player.name = "Player"
-	var forward: Vector2 = Vector2.RIGHT.rotated(global_rotation)
-	var close_pos: Vector2 = global_position + forward * 40.0
-	dummy_player.global_position = close_pos
-	_player = dummy_player
-	_detect_eye_contact()
-	dummy_player.queue_free()
+	print("[Monster] 已就绪")

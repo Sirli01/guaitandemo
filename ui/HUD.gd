@@ -16,6 +16,7 @@ var _reading_close_btn: Button
 
 var _player: Node = null
 var _game_manager: Node = null
+var _time_system: Node = null
 var _warning_flash_timer: float = 0.0
 var _is_warning_active: bool = false
 var _warning_color: Color = Color.RED
@@ -23,6 +24,7 @@ var _warning_color: Color = Color.RED
 func _ready() -> void:
 	_player = get_tree().get_first_node_in_group("player")
 	_game_manager = get_node_or_null("/root/GameManager")
+	_time_system = get_node_or_null("/root/TimeSystem")
 	_build_ui()
 	_connect_signals()
 	print("[HUD] 动态UI已生成")
@@ -231,6 +233,9 @@ func _connect_signals() -> void:
 		if _game_manager.has_signal("objective_updated"):
 			_game_manager.objective_updated.connect(_on_objective_updated)
 
+	if _time_system != null:
+		_time_system.time_updated.connect(_on_time_updated)
+
 func _process(delta: float) -> void:
 	_update_stamina()
 	_update_survival()
@@ -273,12 +278,16 @@ func _update_survival() -> void:
 		_satiety_bar.modulate = Color(1, 0.5, 0)
 
 func _update_clock() -> void:
-	if _game_manager == null:
+	if _time_system == null:
 		return
-	var game_time: String = _game_manager.get("game_time_string") if "game_time_string" in _game_manager else "??:??"
-	_clock_label.text = game_time
+	_clock_label.text = _time_system.get_time_string()
+	if _time_system.is_forbidden_time():
+		_clock_label.modulate = Color.RED
+	else:
+		_clock_label.modulate = Color.WHITE
 
-	var is_forbidden: bool = _game_manager.get("is_forbidden_period") if "is_forbidden_period" in _game_manager else false
+func _on_time_updated(time_string: String, is_forbidden: bool) -> void:
+	_clock_label.text = time_string
 	if is_forbidden:
 		_clock_label.modulate = Color.RED
 	else:
