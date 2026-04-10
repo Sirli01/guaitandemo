@@ -20,7 +20,11 @@ func _build_ui() -> void:
 	_panel.visible = false
 	add_child(_panel)
 	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_panel.color = Color(0.0, 0.0, 0.0, 0.92)
+
+	# Panel 没有 color 属性，用 StyleBoxFlat 设置背景色
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.0, 0.0, 0.0, 0.92)
+	_panel.add_theme_stylebox_override("panel", style)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"

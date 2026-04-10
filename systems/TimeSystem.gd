@@ -7,14 +7,20 @@ signal time_updated(time_string: String, is_forbidden: bool)
 const START_HOUR: int = 20
 const START_MINUTE: int = 0
 
+var _elapsed_game_seconds: float = 0.0  # 用于累积时间的秒数
 var _elapsed_game_minutes: int = START_HOUR * 60 + START_MINUTE  # 初始1200分钟
 
 var time_string: String = "20:00"
 var is_forbidden: bool = false
 
 func _process(delta: float) -> void:
-	_elapsed_game_minutes += 1  # 每帧+1分钟（1现实秒=1游戏分钟）
-	_update_time()
+	# 1现实秒 = 1游戏分钟：累积现实秒数，每累满1秒增加1游戏分钟
+	_elapsed_game_seconds += delta
+	if _elapsed_game_seconds >= 1.0:
+		var minutes_to_add: int = int(_elapsed_game_seconds)
+		_elapsed_game_minutes += minutes_to_add
+		_elapsed_game_seconds -= float(minutes_to_add)
+		_update_time()
 
 func _update_time() -> void:
 	var total_minutes: int = _elapsed_game_minutes

@@ -20,7 +20,11 @@ func _build_ui() -> void:
 	_panel.visible = false
 	add_child(_panel)
 	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_panel.color = Color(0.95, 0.95, 0.95, 1.0)
+
+	# Panel 没有 color 属性，用 StyleBoxFlat 设置背景色
+	var _default_style := StyleBoxFlat.new()
+	_default_style.bg_color = Color(0.95, 0.95, 0.95, 1.0)
+	_panel.add_theme_stylebox_override("panel", _default_style)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"
@@ -80,7 +84,9 @@ func show_ending(ending_type: String) -> void:
 	print("[EndingUI] 显示结局: %s" % ending_type)
 
 func _show_hidden_ending() -> void:
-	_panel.color = Color(0.05, 0.05, 0.08, 1.0)
+	var dark_style := StyleBoxFlat.new()
+	dark_style.bg_color = Color(0.05, 0.05, 0.08, 1.0)
+	_panel.add_theme_stylebox_override("panel", dark_style)
 	_title_label.text = "[ 隐藏结局：灵魂互换 ]"
 	_title_label.modulate = Color(0.9, 0.85, 0.7, 1.0)
 	_ending_text.bbcode_enabled = true

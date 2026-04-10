@@ -77,9 +77,9 @@ func _update_stamina_cap() -> void:
 # ============================================================
 
 func _update_stamina_recovery(delta: float) -> void:
-	# 只有在安全区且非跑步状态才恢复
+	# 只有在非危险区域才恢复
 	if not _in_danger_zone:
-		var rate: float = STAMINA_RESTORE_RATE_SAFE if _in_danger_zone else STAMINA_RESTORE_RATE
+		var rate: float = STAMINA_RESTORE_RATE_SAFE if SafeZoneSystem.is_player_in_safe_zone() else STAMINA_RESTORE_RATE
 		var prev: float = stamina
 		stamina = min(stamina + rate * delta, stamina_max)
 		if stamina != prev:

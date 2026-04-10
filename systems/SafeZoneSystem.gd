@@ -47,7 +47,7 @@ func exit_safe_zone(zone_name: String) -> void:
 func _apply_player_safe_status(in_safe: bool) -> void:
 	var players: Array = get_tree().get_nodes_in_group("player")
 	for p in players:
-		if p.has_property("is_in_safe_room"):
+		if "is_in_safe_room" in p:
 			p.is_in_safe_room = in_safe
 
 # ============================================================

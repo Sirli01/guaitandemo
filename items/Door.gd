@@ -85,6 +85,10 @@ func lock_permanent() -> void:
 	_update_visual()
 	print("[Door] %s 已被永久锁死" % door_id)
 
+# ItemDoorLock 调用此别名
+func lock_permanently() -> void:
+	lock_permanent()
+
 func break_door() -> void:
 	if _state == DoorState.BROKEN:
 		return

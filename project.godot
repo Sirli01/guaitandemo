@@ -23,6 +23,7 @@ GameManager="*uid://cck75pv8o5pcq"
 SurvivalSystem="*uid://c6u5lxovehkvm"
 SafeZoneSystem="*uid://ds3jctv6ujl6v"
 DialogueSystem="*uid://ob5wrnhewg51"
+TimeSystem="*uid://g56adamynnah"
 
 [input]
 
