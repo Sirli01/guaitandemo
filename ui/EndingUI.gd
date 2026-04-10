@@ -22,9 +22,9 @@ func _build_ui() -> void:
 	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 
 	# Panel 没有 color 属性，用 StyleBoxFlat 设置背景色
-	var _default_style := StyleBoxFlat.new()
-	_default_style.bg_color = Color(0.95, 0.95, 0.95, 1.0)
-	_panel.add_theme_stylebox_override("panel", _default_style)
+	var light_style := StyleBoxFlat.new()
+	light_style.bg_color = Color(0.95, 0.95, 0.95, 1.0)
+	_panel.add_theme_stylebox_override("panel", light_style)
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "VBox"

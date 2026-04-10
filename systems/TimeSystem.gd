@@ -7,7 +7,7 @@ signal time_updated(time_string: String, is_forbidden: bool)
 const START_HOUR: int = 20
 const START_MINUTE: int = 0
 
-var _elapsed_game_seconds: float = 0.0  # 用于累积时间的秒数
+var _elapsed_game_seconds: float = 0.0  # 用于累积现实时间的秒数
 var _elapsed_game_minutes: int = START_HOUR * 60 + START_MINUTE  # 初始1200分钟
 
 var time_string: String = "20:00"
