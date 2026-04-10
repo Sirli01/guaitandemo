@@ -25,9 +25,6 @@ func remove_item(p_item_id: String) -> void:
 	for i: int in _inventory.size():
 		var it: ItemClass = _inventory[i]
 		if it.item_id == p_item_id:
-			if it.is_key_item:
-				print("[ItemSystem] 关键道具 %s 不可丢弃" % p_item_id)
-				return
 			_inventory.remove_at(i)
 			inventory_changed.emit()
 			return

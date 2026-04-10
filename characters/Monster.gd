@@ -93,7 +93,7 @@ func _switch_state(new_state: State) -> void:
 	_chase_timer = 0.0
 	_lost_timer = 0.0
 	_wait_timer = 0.0
-	print("[Monster] 状态切换: %s -> %s" % (State.keys()[current_state], State.keys()[new_state]))
+	print("[Monster] 状态切换: %s -> %s" % [State.keys()[current_state], State.keys()[new_state]])
 
 # ============================================================
 # 感知入口（由场景脚本调用，传入玩家引用）

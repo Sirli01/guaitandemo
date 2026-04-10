@@ -263,6 +263,20 @@ func _try_interact() -> void:
 	_nearby_interactable = null
 
 # ============================================================
+# 外部查询接口
+# ============================================================
+
+func is_running() -> bool:
+	return _is_running
+
+func set_dialogue_active(active: bool) -> void:
+	# 对话中降低移动速度
+	if active:
+		set_process_input(false)
+	else:
+		set_process_input(true)
+
+# ============================================================
 # 初始化
 # ============================================================
 

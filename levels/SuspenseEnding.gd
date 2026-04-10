@@ -1,12 +1,23 @@
 extends CanvasLayer
 
-enum EndingState { FADE_IN, PAPER_REVEAL, TEXT_REVEAL, FINAL_MESSAGE, DONE }
+# ============================================================
+# 悬念结局：细思极恐的收尾
+# GDD：
+# - 电梯门缓缓关上，众人以为终于逃出生天
+# - 音效骤停
+# - 姐姐低头看规则纸条，多了一行字："她在说谎"
+# - 画面切黑，Demo 结束
+# ============================================================
 
-var _state: EndingState = EndingState.FADE_IN
+enum EndingState { ELEVATOR, SILENCE, PAPER_APPEAR, TEXT_REVEAL, LIAR_REVEAL, BLACKOUT, DONE }
+
+var _state: EndingState = EndingState.ELEVATOR
+var _bg: ColorRect
+var _elevator_text: Label
 var _paper: ColorRect
-var _text_label: Label
+var _paper_text: Label
+var _liar_label: Label
 var _final_label: Label
-var _tween: Tween
 
 func _ready() -> void:
 	_build_ui()
@@ -15,124 +26,154 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	# 全黑背景
-	var bg := ColorRect.new()
-	bg.name = "BlackBg"
-	bg.color = Color(0, 0, 0, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	_bg = ColorRect.new()
+	_bg.name = "BlackBg"
+	_bg.color = Color(0, 0, 0, 1.0)
+	_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_bg)
 
-	# 纸条/便签（中间偏上）
+	# 电梯内旁白
+	_elevator_text = Label.new()
+	_elevator_text.name = "ElevatorText"
+	_elevator_text.text = ""
+	_elevator_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_elevator_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_elevator_text.modulate = Color(0.7, 0.7, 0.7, 0.0)
+	_elevator_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_elevator_text.custom_minimum_size = Vector2(500, 200)
+	add_child(_elevator_text)
+	_elevator_text.set_anchors_preset(Control.PRESET_CENTER)
+	_elevator_text.offset_left = -250
+	_elevator_text.offset_right = 250
+	_elevator_text.offset_top = -100
+	_elevator_text.offset_bottom = 100
+
+	# 纸条
 	_paper = ColorRect.new()
 	_paper.name = "Paper"
 	_paper.color = Color(0.95, 0.93, 0.85, 1.0)
-	_paper.custom_minimum_size = Vector2(320, 200)
+	_paper.custom_minimum_size = Vector2(340, 220)
 	_paper.modulate.a = 0.0
 	add_child(_paper)
 	_paper.set_anchors_preset(Control.PRESET_CENTER)
-	_paper.offset_left = -160
-	_paper.offset_right = 160
-	_paper.offset_top = -250
-	_paper.offset_bottom = -50
+	_paper.offset_left = -170
+	_paper.offset_right = 170
+	_paper.offset_top = -200
+	_paper.offset_bottom = 20
 
 	# 纸条上的文字
-	_text_label = Label.new()
-	_text_label.name = "PaperText"
-	_text_label.text = "规则第三条："
-	_text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_text_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_text_label.modulate = Color(0.1, 0.1, 0.1, 1.0)
-	_text_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_text_label.custom_minimum_size = Vector2(280, 160)
-	_paper.add_child(_text_label)
-	_text_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_text_label.offset_left = 20
-	_text_label.offset_right = -20
-	_text_label.offset_top = 20
-	_text_label.offset_bottom = -20
+	_paper_text = Label.new()
+	_paper_text.name = "PaperText"
+	_paper_text.text = ""
+	_paper_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_paper_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_paper_text.modulate = Color(0.15, 0.12, 0.10, 1.0)
+	_paper_text.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_paper_text.custom_minimum_size = Vector2(300, 180)
+	_paper.add_child(_paper_text)
+	_paper_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_paper_text.offset_left = 20
+	_paper_text.offset_right = -20
+	_paper_text.offset_top = 20
+	_paper_text.offset_bottom = -20
 
-	# 最终字幕
+	# "她在说谎" 最终一击
+	_liar_label = Label.new()
+	_liar_label.name = "LiarLabel"
+	_liar_label.text = ""
+	_liar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_liar_label.modulate = Color(0.8, 0.0, 0.0, 0.0)
+	_liar_label.custom_minimum_size = Vector2(400, 60)
+	add_child(_liar_label)
+	_liar_label.set_anchors_preset(Control.PRESET_CENTER)
+	_liar_label.offset_left = -200
+	_liar_label.offset_right = 200
+	_liar_label.offset_top = 60
+	_liar_label.offset_bottom = 120
+
+	# Demo 结束字幕
 	_final_label = Label.new()
 	_final_label.name = "FinalLabel"
 	_final_label.text = ""
 	_final_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_final_label.modulate = Color(0.7, 0.7, 0.7, 0.0)
+	_final_label.modulate = Color(0.5, 0.5, 0.5, 0.0)
 	_final_label.custom_minimum_size = Vector2(600, 60)
 	add_child(_final_label)
 	_final_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_final_label.offset_bottom = -100
-	_final_label.offset_top = -160
-	_final_label.custom_minimum_size = Vector2(600, 60)
+	_final_label.offset_bottom = -80
+	_final_label.offset_top = -140
 
 func _start_ending_sequence() -> void:
 	get_tree().paused = true
 
-	# 第一阶段：淡入黑屏
+	# 第一阶段：电梯内旁白
+	_state = EndingState.ELEVATOR
+	_elevator_text.text = "电梯缓缓运行……\n\n众人以为终于逃出生天了。"
+	var tween1 := create_tween()
+	tween1.tween_property(_elevator_text, "modulate:a", 1.0, 1.5)
+	await tween1.finished
+
+	await get_tree().create_timer(3.0).timeout
+
+	# 第二阶段：音效骤停（文字暗示）
+	_state = EndingState.SILENCE
+	var tween2 := create_tween()
+	tween2.tween_property(_elevator_text, "modulate:a", 0.0, 0.5)
+	await tween2.finished
+
 	await get_tree().create_timer(1.5).timeout
-	_state = EndingState.PAPER_REVEAL
-	_reveal_paper()
 
-func _reveal_paper() -> void:
-	_state = EndingState.PAPER_REVEAL
+	# 第三阶段：纸条浮现
+	_state = EndingState.PAPER_APPEAR
+	var tween3 := create_tween()
+	tween3.tween_property(_paper, "modulate:a", 1.0, 1.5)
+	await tween3.finished
 
-	# 纸条淡入
-	var tween := create_tween()
-	tween.tween_property(_paper, "modulate:a", 1.0, 1.2)
-
-	await tween.finished
-
-	# 第二阶段：纸条上文字逐行出现
+	# 第四阶段：纸条文字逐行显示
 	_state = EndingState.TEXT_REVEAL
-	_reveal_text_line_by_line()
-
-func _reveal_text_line_by_line() -> void:
 	var lines: Array = [
-		"规则第三条：",
+		"姐姐习惯性地低头",
+		"看了一眼手里的规则纸条。",
 		"",
-		"如果你看到金色的瞳孔，",
-		"说明你已经被盯上了。",
+		"纸条上的字都认识……",
 		"",
-		"不要逃跑，不要躲藏。",
-		"直视它，它就会消失。",
-		"",
-		"...但如果它消失了，",
-		"说明你姐姐已经... ",
-		"",
-		"...她说的每一句话...",
+		"但最下面……",
+		"多了一行。",
 	]
-
-	_text_label.text = ""
 	var full_text: String = ""
-	var index: int = 0
-
 	for line: String in lines:
-		await get_tree().create_timer(0.5).timeout
+		await get_tree().create_timer(0.6).timeout
 		full_text += line + "\n"
-		_text_label.text = full_text
-		index += 1
+		_paper_text.text = full_text
 
-	# 最后一秒，添加"她说谎"
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(2.0).timeout
 
-	var final_text: String = full_text + "\n[color=#cc0000]她说谎。[/color]"
-	_text_label.text = final_text
+	# 第五阶段：关键一击——"她在说谎"
+	_state = EndingState.LIAR_REVEAL
+	_liar_label.text = "她 在 说 谎。"
+	var tween4 := create_tween()
+	tween4.tween_property(_liar_label, "modulate:a", 1.0, 1.0)
+	await tween4.finished
 
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(3.0).timeout
 
-	# 第三阶段：显示 Demo 结束字幕
-	_show_final_message()
+	# 第六阶段：一切切黑
+	_state = EndingState.BLACKOUT
+	var tween5 := create_tween()
+	tween5.tween_property(_paper, "modulate:a", 0.0, 0.8)
+	tween5.parallel().tween_property(_liar_label, "modulate:a", 0.0, 0.8)
+	await tween5.finished
 
-func _show_final_message() -> void:
-	_state = EndingState.FINAL_MESSAGE
+	await get_tree().create_timer(2.0).timeout
 
-	var tween := create_tween()
-	tween.tween_property(_final_label, "modulate:a", 1.0, 2.0)
-	tween.tween_interval(2.0)
-	tween.tween_property(_final_label, "text", "Demo 结束", 0.01)
-	tween.tween_interval(1.5)
+	# 第七阶段：Demo 结束
+	_state = EndingState.DONE
+	_final_label.text = "Demo 结束"
+	var tween6 := create_tween()
+	tween6.tween_property(_final_label, "modulate:a", 1.0, 2.0)
+	await tween6.finished
 
-	await tween.finished
-
-	# 添加返回主菜单按钮
+	await get_tree().create_timer(1.5).timeout
 	_show_return_button()
 
 func _show_return_button() -> void:
@@ -142,10 +183,11 @@ func _show_return_button() -> void:
 	btn.custom_minimum_size = Vector2(200, 50)
 	add_child(btn)
 	btn.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	btn.offset_bottom = -30
-	btn.offset_top = -80
+	btn.offset_bottom = -20
+	btn.offset_top = -70
+	btn.offset_left = -100
+	btn.offset_right = 100
 	btn.pressed.connect(_on_return_pressed)
-
 	var tween := create_tween()
 	tween.tween_property(btn, "modulate:a", 1.0, 1.0)
 
