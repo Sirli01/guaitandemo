@@ -59,6 +59,7 @@ func _spawn_item_by_id(id: String) -> Item:
 		"childhood_photo":class_path += "ItemChildhoodPhoto.gd"
 		"resident_note":   class_path += "ItemResidentNote.gd"
 		"sister_phone":   class_path += "ItemSisterPhone.gd"
+		"elevator_card_f1": class_path += "ItemElevatorCard.gd"
 		_:                return null
 
 	var item_class = load(class_path)
