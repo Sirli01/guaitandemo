@@ -392,7 +392,7 @@ func _update_girl_dead() -> void:
 [color=#888888]队伍陷入绝望。
 就在这时，你注意到开朗NPC不知何时也落了单……[/color]""")
 
-	# 让开朗NPC落单（移动到离队伍较远的位置）
+	# 让开朗NPC落单（移至远离队伍的位置，触发离群判定）
 	if _npc_cheer != null and is_instance_valid(_npc_cheer):
 		_npc_cheer.global_position = Vector2(700, 350)
 

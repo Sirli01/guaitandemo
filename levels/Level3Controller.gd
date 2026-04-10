@@ -478,15 +478,13 @@ func _update_controlling_monster(delta: float) -> void:
 	if _cutscene_timer < 3.0:
 		return
 
-	if _cutscene_timer < 5.0:
-		# 操控怪物向右跑
-		if _human_monster != null and is_instance_valid(_human_monster):
-			_human_monster.global_position.x += 200.0 * delta
+	# 操控怪物向右跑
+	if _human_monster != null and is_instance_valid(_human_monster):
+		_human_monster.global_position.x += 200.0 * delta
 
-		if _cutscene_timer >= 4.0:
-			# 巨口出现！
-			_start_cutscene(CutscenePhase.BIGMOUTH_ATTACK)
-		return
+	# 4秒后巨口出现
+	if _cutscene_timer >= 4.0:
+		_start_cutscene(CutscenePhase.BIGMOUTH_ATTACK)
 
 func _update_bigmouth_attack() -> void:
 	if _cutscene_timer < 0.5:
